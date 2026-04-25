@@ -1,0 +1,51 @@
+# ── Dependencies ──────────────────────────────────────────────────────────────
+node_modules/
+
+# ── Frontend build output ──────────────────────────────────────────────────────
+dist/
+
+# ── Rust / Tauri build artifacts ───────────────────────────────────────────────
+# target-dir is set to ~/rust-targets/ghostnote via .cargo/config.toml
+# to avoid Windows WDAC blocking build scripts on the Desktop.
+src-tauri/target/
+.cargo/
+
+# ── Environment / secrets (never commit real keys) ────────────────────────────
+.env
+.env.local
+.env.*.local
+# Keep .env.example committed — it's the template
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Editors ───────────────────────────────────────────────────────────────────
+.vscode/settings.json
+.vscode/launch.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ── Tauri app data (user runtime data, not source) ────────────────────────────
+# settings.json is stored in %APPDATA%/com.ghostnote.app — not in the repo
+# Generated installers — large, use GitHub Releases instead
+src-tauri/target/release/bundle/
+
+# ── Misc ──────────────────────────────────────────────────────────────────────
+*.pem
+*.p12
+*.key
+.node_repl_history
+.claude/
