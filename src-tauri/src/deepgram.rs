@@ -5,7 +5,7 @@ use std::sync::{
     Arc,
 };
 use tokio::sync::mpsc::UnboundedReceiver;
-use tokio_tungstenite::{connect_async, tungstenite::Message};
+use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Deserialize)]
@@ -49,9 +49,12 @@ pub async fn run_deepgram(
     on_transcript: impl Fn(String, bool) + Send + 'static,
     stop_flag: Arc<AtomicBool>,
 ) -> Result<(), String> {
+    // Pass the API key as a query param — avoids manual HTTP request construction
+    // and all header-duplication issues with tungstenite's own handshake headers.
     let url = format!(
         "wss://api.deepgram.com/v1/listen\
-         ?model=nova-2\
+         ?token={api_key}\
+         &model=nova-2\
          &encoding=linear16\
          &sample_rate={sample_rate}\
          &channels=1\
@@ -61,14 +64,7 @@ pub async fn run_deepgram(
          &vad_events=true"
     );
 
-    let req = tokio_tungstenite::tungstenite::http::Request::builder()
-        .uri(&url)
-        .header("Authorization", format!("Token {api_key}"))
-        .header("Host", "api.deepgram.com")
-        .body(())
-        .map_err(|e| e.to_string())?;
-
-    let (ws_stream, _) = connect_async(req).await.map_err(|e| e.to_string())?;
+    let (ws_stream, _) = connect_async(url).await.map_err(|e| e.to_string())?;
     let (mut write, mut read) = ws_stream.split();
 
     // Send audio frames

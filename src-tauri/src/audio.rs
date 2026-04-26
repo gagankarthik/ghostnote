@@ -18,9 +18,14 @@ pub fn start_capture(
 ) -> Result<AudioFormat, String> {
     use wasapi::*;
 
-    initialize_mta().map_err(|e| format!("COM init failed: {e}"))?;
+    initialize_mta()
+        .ok()
+        .map_err(|e| format!("COM init failed: {e}"))?;
 
-    let device = get_default_device(&Direction::Render)
+    let enumerator =
+        DeviceEnumerator::new().map_err(|e| format!("DeviceEnumerator failed: {e}"))?;
+    let device = enumerator
+        .get_default_device(&Direction::Render)
         .map_err(|e| format!("No audio device: {e}"))?;
     let probe_client = device
         .get_iaudioclient()
@@ -30,20 +35,14 @@ pub fn start_capture(
         .get_mixformat()
         .map_err(|e| format!("MixFormat error: {e}"))?;
 
-    let sample_rate = fmt.get_samplespersec() as u32;
+    let sample_rate = fmt.get_samplespersec();
     let channels = fmt.get_nchannels();
     let bytes_per_frame = fmt.get_blockalign() as usize;
     let bits_per_sample = fmt.get_bitspersample() as usize;
     let af = AudioFormat { sample_rate };
 
     std::thread::spawn(move || {
-        if let Err(e) = capture_loop(
-            tx,
-            stop_flag,
-            channels as usize,
-            bytes_per_frame,
-            bits_per_sample,
-        ) {
+        if let Err(e) = capture_loop(tx, stop_flag, channels as usize, bytes_per_frame, bits_per_sample) {
             eprintln!("[audio] capture loop ended: {e}");
         }
     });
@@ -60,9 +59,14 @@ fn capture_loop(
 ) -> Result<(), String> {
     use wasapi::*;
 
-    initialize_mta().map_err(|e| format!("COM init: {e}"))?;
+    initialize_mta()
+        .ok()
+        .map_err(|e| format!("COM init: {e}"))?;
 
-    let device = get_default_device(&Direction::Render)
+    let enumerator =
+        DeviceEnumerator::new().map_err(|e| format!("DeviceEnumerator: {e}"))?;
+    let device = enumerator
+        .get_default_device(&Direction::Render)
         .map_err(|e| format!("No audio device: {e}"))?;
     let mut audio_client = device
         .get_iaudioclient()
@@ -71,9 +75,15 @@ fn capture_loop(
         .get_mixformat()
         .map_err(|e| format!("MixFormat: {e}"))?;
 
-    let period_ns = 500_000i64; // 50 ms in 100-ns units
     audio_client
-        .initialize_client(&fmt, period_ns, &Direction::Capture, &ShareMode::Shared, true)
+        .initialize_client(
+            &fmt,
+            &Direction::Capture,
+            &StreamMode::PollingShared {
+                buffer_duration_hns: 500_000,
+                autoconvert: true,
+            },
+        )
         .map_err(|e| format!("InitClient: {e}"))?;
 
     let capture_client = audio_client
@@ -87,7 +97,7 @@ fn capture_loop(
         std::thread::sleep(std::time::Duration::from_millis(20));
 
         loop {
-            let nframes = match capture_client.get_next_nbr_frames() {
+            let nframes = match capture_client.get_next_packet_size() {
                 Ok(Some(n)) if n > 0 => n,
                 Ok(_) => break,
                 Err(_) => break,
@@ -96,13 +106,10 @@ fn capture_loop(
             let buf_size = nframes as usize * bytes_per_frame;
             let mut raw = vec![0u8; buf_size];
 
-            let (_, flags) = match capture_client.read_from_device(bytes_per_frame, &mut raw) {
-                Ok(v) => v,
-                Err(_) => break,
-            };
+            if capture_client.read_from_device(&mut raw).is_err() {
+                break;
+            }
 
-            // Deepgram handles silence via VAD, so always convert
-            let _ = flags;
             let samples = raw_bytes_to_f32(&raw, bits_per_sample);
             let pcm_i16 = f32_to_mono_i16(&samples, channels);
 
@@ -112,7 +119,9 @@ fn capture_loop(
         }
     }
 
-    audio_client.stop_stream().map_err(|e| format!("StopStream: {e}"))?;
+    audio_client
+        .stop_stream()
+        .map_err(|e| format!("StopStream: {e}"))?;
     Ok(())
 }
 

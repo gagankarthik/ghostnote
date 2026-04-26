@@ -26,7 +26,7 @@ base64 = "0.22"
 image = { version = "0.25", default-features = false, features = ["jpeg"] }
 
 [target.'cfg(windows)'.dependencies]
-wasapi = "0.14"
+wasapi = "0.23"
 windows = { version = "0.61", features = [
     "Win32_Foundation",
     "Win32_UI_WindowsAndMessaging",
