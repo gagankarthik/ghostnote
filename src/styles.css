@@ -293,6 +293,8 @@ html, body, #root {
   outline: none;
   transition: border-color 0.15s;
   font-family: inherit;
+  user-select: text;
+  -webkit-user-select: text;
 }
 .chat-input:focus       { border-color: var(--accent); }
 .chat-input::placeholder{ color: var(--text-faint); }
@@ -330,6 +332,8 @@ html, body, #root {
 .settings-hint    { font-size: 10.5px; color: var(--text-faint); line-height: 1.5; }
 .ai-divider       { height: 1px; background: var(--glass-border); flex-shrink: 0; }
 
+.key-group { display: flex; flex-direction: column; gap: 4px; }
+
 .model-picker { display: flex; gap: 6px; }
 .model-btn {
   flex: 1; padding: 6px 0; border-radius: 7px;
@@ -345,6 +349,17 @@ html, body, #root {
   display: flex; align-items: center; gap: 10px;
   cursor: pointer; font-size: 12px; color: var(--text-dim);
 }
+.form-input {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px; color: var(--text);
+  font-size: 12px; padding: 7px 10px; outline: none; width: 100%;
+  font-family: monospace; transition: border-color 0.15s;
+  user-select: text; -webkit-user-select: text;
+}
+.form-input:focus { border-color: var(--accent); }
+.form-input::placeholder { color: var(--text-faint); }
+
 .form-label {
   font-size: 10px; font-weight: 600;
   text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-faint);

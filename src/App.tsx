@@ -53,6 +53,9 @@ export default function App() {
   const [useScreen,   setUseScreen]   = useState(false);
   const [autoAsk,     setAutoAsk]     = useState(false);
   const [opacity,     setOpacity]     = useState(90);
+  const [openaiKey,   setOpenaiKey]   = useState("");
+  const [deepgramKey, setDeepgramKey] = useState("");
+  const [keysSaved,   setKeysSaved]   = useState(false);
 
   const timerRef        = useRef<ReturnType<typeof setInterval> | null>(null);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
@@ -71,12 +74,28 @@ export default function App() {
   useEffect(() => { aiModelRef.current    = aiModel;    }, [aiModel]);
   useEffect(() => { useScreenRef.current  = useScreen;  }, [useScreen]);
 
-  // ── Toasts ─────────────────────────────────��────────────────────��─────────
+  // ── Toasts ────────────────────────────────────────────────────────────────
   const addToast = useCallback((message: string, type: Toast["type"] = "error") => {
     const id = String(++toastId);
     setToasts(prev => [...prev.slice(-3), { id, message, type }]);
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4500);
   }, []);
+
+  // ── Load saved API keys on mount ──────────────────────────────────────────
+  useEffect(() => {
+    api.getSettings().then(([ok, dk]) => {
+      if (ok) setOpenaiKey(ok);
+      if (dk) setDeepgramKey(dk);
+    }).catch(() => {});
+  }, []);
+
+  const handleSaveKeys = async () => {
+    try {
+      await api.saveSettings(openaiKey, deepgramKey);
+      setKeysSaved(true);
+      setTimeout(() => setKeysSaved(false), 2000);
+    } catch (e) { addToast(String(e)); }
+  };
 
   // ── Timer ─────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -379,6 +398,31 @@ export default function App() {
       {/* ── Settings view ── */}
       {view === "settings" && (
         <div className="settings-view">
+
+          {/* API Keys */}
+          <div className="settings-section">
+            <div className="settings-title">API Keys</div>
+            <div className="key-group">
+              <label className="form-label">OpenAI Key</label>
+              <input className="form-input" type="password" placeholder="sk-proj-…"
+                value={openaiKey} onChange={e => setOpenaiKey(e.target.value)}
+                autoComplete="off" spellCheck={false} />
+            </div>
+            <div className="key-group">
+              <label className="form-label">Deepgram Key</label>
+              <input className="form-input" type="password" placeholder="Paste your Deepgram API key"
+                value={deepgramKey} onChange={e => setDeepgramKey(e.target.value)}
+                autoComplete="off" spellCheck={false} />
+            </div>
+            <button className={`btn ${keysSaved ? "btn-record" : "btn-ask"}`}
+              onClick={handleSaveKeys} style={{ alignSelf: "flex-start" }}>
+              {keysSaved ? "✓ Saved" : "Save Keys"}
+            </button>
+            <p className="settings-hint">Keys are stored locally in the app data folder.</p>
+          </div>
+
+          <div className="ai-divider" />
+
           <div className="settings-section">
             <div className="settings-title">AI Model</div>
             <div className="model-picker">
