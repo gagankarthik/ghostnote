@@ -16,6 +16,22 @@ export interface Toast {
   type: "error" | "success" | "info";
 }
 
-export type AIMode = "interview" | "meeting" | "notes";
-export type AIModel = "gpt-4o-mini" | "gpt-4o";
-export type AppView = "main" | "settings";
+export interface MeetingRecord {
+  id: string;
+  startedAt: number;
+  endedAt: number;
+  wordCount: number;
+  questionCount: number;
+  preview: string;
+}
+
+export interface AuthUser {
+  email: string;
+  accessToken: string;
+  refreshToken: string;
+}
+
+export type AIMode   = "interview" | "meeting" | "notes";
+export type AIModel  = "gpt-4o-mini" | "gpt-4o";
+export type AppView  = "main" | "settings";
+export type AppState = "loading" | "auth" | "history" | "meeting";

@@ -92,31 +92,33 @@ pub fn run() {
                 let baked_openai  = keys::OPENAI_KEY.to_string();
                 let baked_deepgram = keys::DEEPGRAM_KEY.to_string();
 
+                // Priority: .env.local > store (user-saved) > baked-in
                 let openai_key = if !env_openai.is_empty() {
                     env_openai
-                } else if !baked_openai.is_empty() {
-                    baked_openai
                 } else {
-                    // Fall back to persisted store
-                    use tauri_plugin_store::StoreExt;
-                    app.handle()
-                        .store("settings.json")
-                        .ok()
-                        .and_then(|s| s.get("openai_key").and_then(|v| v.as_str().map(String::from)))
-                        .unwrap_or_default()
+                    let store_val = {
+                        use tauri_plugin_store::StoreExt;
+                        app.handle()
+                            .store("settings.json")
+                            .ok()
+                            .and_then(|s| s.get("openai_key").and_then(|v| v.as_str().map(String::from)))
+                            .unwrap_or_default()
+                    };
+                    if !store_val.is_empty() { store_val } else { baked_openai }
                 };
 
                 let deepgram_key = if !env_deepgram.is_empty() {
                     env_deepgram
-                } else if !baked_deepgram.is_empty() {
-                    baked_deepgram
                 } else {
-                    use tauri_plugin_store::StoreExt;
-                    app.handle()
-                        .store("settings.json")
-                        .ok()
-                        .and_then(|s| s.get("deepgram_key").and_then(|v| v.as_str().map(String::from)))
-                        .unwrap_or_default()
+                    let store_val = {
+                        use tauri_plugin_store::StoreExt;
+                        app.handle()
+                            .store("settings.json")
+                            .ok()
+                            .and_then(|s| s.get("deepgram_key").and_then(|v| v.as_str().map(String::from)))
+                            .unwrap_or_default()
+                    };
+                    if !store_val.is_empty() { store_val } else { baked_deepgram }
                 };
 
                 *app_state.openai_key.lock().unwrap()   = openai_key;
