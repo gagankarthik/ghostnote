@@ -81,45 +81,19 @@ pub fn run() {
         .setup(|app| {
             use tauri::Manager;
 
-            // ── Load API keys (priority order) ───────────────────────────────
+            // ── Load API keys ────────────────────────────────────────────────
             // 1. .env.local in project root  (dev mode — read at runtime)
             // 2. option_env!() baked keys    (release builds via keys.rs)
-            // 3. tauri-plugin-store          (runtime override via save_settings)
             {
                 let app_state = app.state::<AppState>();
 
                 let (env_openai, env_deepgram) = load_keys_from_dotenv();
-                let baked_openai  = keys::OPENAI_KEY.to_string();
+                let baked_openai   = keys::OPENAI_KEY.to_string();
                 let baked_deepgram = keys::DEEPGRAM_KEY.to_string();
 
-                // Priority: .env.local > store (user-saved) > baked-in
-                let openai_key = if !env_openai.is_empty() {
-                    env_openai
-                } else {
-                    let store_val = {
-                        use tauri_plugin_store::StoreExt;
-                        app.handle()
-                            .store("settings.json")
-                            .ok()
-                            .and_then(|s| s.get("openai_key").and_then(|v| v.as_str().map(String::from)))
-                            .unwrap_or_default()
-                    };
-                    if !store_val.is_empty() { store_val } else { baked_openai }
-                };
-
-                let deepgram_key = if !env_deepgram.is_empty() {
-                    env_deepgram
-                } else {
-                    let store_val = {
-                        use tauri_plugin_store::StoreExt;
-                        app.handle()
-                            .store("settings.json")
-                            .ok()
-                            .and_then(|s| s.get("deepgram_key").and_then(|v| v.as_str().map(String::from)))
-                            .unwrap_or_default()
-                    };
-                    if !store_val.is_empty() { store_val } else { baked_deepgram }
-                };
+                // Priority: .env.local > baked-in (no store — keys come from code only)
+                let openai_key   = if !env_openai.is_empty()   { env_openai   } else { baked_openai   };
+                let deepgram_key = if !env_deepgram.is_empty() { env_deepgram } else { baked_deepgram };
 
                 *app_state.openai_key.lock().unwrap()   = openai_key;
                 *app_state.deepgram_key.lock().unwrap() = deepgram_key;
@@ -164,8 +138,6 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            commands::save_settings,
-            commands::get_settings,
             commands::start_recording,
             commands::stop_recording,
             commands::ask_ai,

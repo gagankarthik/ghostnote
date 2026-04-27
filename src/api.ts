@@ -14,7 +14,4 @@ export const api = {
   clearSession:    ()                                     => invoke<void>("clear_session"),
   captureScreenshot: ()                                   => invoke<string>("capture_screenshot"),
 
-  saveSettings: (openaiKey: string, deepgramKey: string) =>
-    invoke<void>("save_settings", { openaiKey, deepgramKey }),
-  getSettings: () => invoke<[string, string]>("get_settings"),
 };

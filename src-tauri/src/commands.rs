@@ -7,34 +7,6 @@ use tokio::sync::mpsc;
 
 use crate::{openai::OpenAIClient, AppState};
 
-// ── Settings ──────────────────────────────────────────────────────────────────
-
-#[tauri::command]
-pub fn save_settings(
-    openai_key: String,
-    deepgram_key: String,
-    state: State<AppState>,
-    app: AppHandle,
-) -> Result<(), String> {
-    *state.openai_key.lock().unwrap() = openai_key.clone();
-    *state.deepgram_key.lock().unwrap() = deepgram_key.clone();
-
-    use tauri_plugin_store::StoreExt;
-    let store = app.store("settings.json").map_err(|e| e.to_string())?;
-    store.set("openai_key", serde_json::json!(openai_key));
-    store.set("deepgram_key", serde_json::json!(deepgram_key));
-    store.save().map_err(|e| e.to_string())?;
-    Ok(())
-}
-
-#[tauri::command]
-pub fn get_settings(state: State<AppState>) -> (String, String) {
-    (
-        state.openai_key.lock().unwrap().clone(),
-        state.deepgram_key.lock().unwrap().clone(),
-    )
-}
-
 // ── Recording ────────────────────────────────────────────────────────────────
 
 #[tauri::command]

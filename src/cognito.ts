@@ -1,4 +1,4 @@
-const REGION    = (import.meta.env.VITE_COGNITO_REGION    as string | undefined) ?? "us-east-1";
+const REGION    = (import.meta.env.VITE_COGNITO_REGION    as string | undefined) ?? "us-east-2";
 const CLIENT_ID = (import.meta.env.VITE_COGNITO_CLIENT_ID as string | undefined) ?? "";
 const ENDPOINT  = `https://cognito-idp.${REGION}.amazonaws.com/`;
 
@@ -33,12 +33,15 @@ export async function signIn(email: string, password: string) {
   };
 }
 
-export async function signUp(email: string, password: string): Promise<void> {
+export async function signUp(email: string, password: string, name: string): Promise<void> {
   await cognitoReq("SignUp", {
     ClientId: CLIENT_ID,
     Username: email,
     Password: password,
-    UserAttributes: [{ Name: "email", Value: email }],
+    UserAttributes: [
+      { Name: "email", Value: email },
+      { Name: "name",  Value: name  },
+    ],
   });
 }
 

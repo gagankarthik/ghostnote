@@ -64,7 +64,14 @@ pub async fn run_deepgram(
          &vad_events=true"
     );
 
-    let (ws_stream, _) = connect_async(url).await.map_err(|e| e.to_string())?;
+    let (ws_stream, _) = connect_async(url).await.map_err(|e| {
+        let s = e.to_string();
+        if s.contains("401") || s.contains("Unauthorized") {
+            "Deepgram API key rejected (401). Open Settings and enter a valid Deepgram key.".to_string()
+        } else {
+            s
+        }
+    })?;
     let (mut write, mut read) = ws_stream.split();
 
     // Send audio frames

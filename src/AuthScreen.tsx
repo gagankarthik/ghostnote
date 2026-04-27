@@ -15,6 +15,7 @@ export default function AuthScreen({ onAuth }: Props) {
   const [tab,      setTab]      = useState<Tab>("signin");
   const [step,     setStep]     = useState<Step>("form");
   const [email,    setEmail]    = useState("");
+  const [name,     setName]     = useState("");
   const [password, setPassword] = useState("");
   const [code,     setCode]     = useState("");
   const [error,    setError]    = useState("");
@@ -37,10 +38,10 @@ export default function AuthScreen({ onAuth }: Props) {
   };
 
   const handleSignUp = async () => {
-    if (!email || !password) return;
+    if (!email || !password || !name) return;
     setLoading(true); setError("");
     try {
-      await signUp(email, password);
+      await signUp(email, password, name);
       setStep("verify");
     } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
     finally { setLoading(false); }
@@ -122,6 +123,17 @@ export default function AuthScreen({ onAuth }: Props) {
                 Create Account
               </button>
             </div>
+            {tab === "signup" && (
+              <input
+                className="auth-input"
+                type="text"
+                placeholder="Full name"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                onKeyDown={handleKeyDown}
+                autoComplete="name"
+              />
+            )}
             <input
               className="auth-input"
               type="email"
@@ -144,7 +156,7 @@ export default function AuthScreen({ onAuth }: Props) {
             <button
               className="btn-auth"
               onClick={tab === "signin" ? handleSignIn : handleSignUp}
-              disabled={loading || !email || !password}
+              disabled={loading || !email || !password || (tab === "signup" && !name)}
             >
               {loading
                 ? <span className="spinner" />
