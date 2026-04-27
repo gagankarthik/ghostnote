@@ -5,7 +5,10 @@ use std::sync::{
     Arc,
 };
 use tokio::sync::mpsc::UnboundedReceiver;
-use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
+use tokio_tungstenite::{
+    connect_async,
+    tungstenite::{client::IntoClientRequest, http, protocol::Message},
+};
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Deserialize)]
@@ -49,12 +52,12 @@ pub async fn run_deepgram(
     on_transcript: impl Fn(String, bool) + Send + 'static,
     stop_flag: Arc<AtomicBool>,
 ) -> Result<(), String> {
-    // Pass the API key as a query param — avoids manual HTTP request construction
-    // and all header-duplication issues with tungstenite's own handshake headers.
+    // Build the URL without the token — auth goes in the Authorization header.
+    // Using IntoClientRequest lets tungstenite generate the WebSocket handshake
+    // headers (Upgrade, Sec-WebSocket-Key, etc.) so we only need to add ours.
     let url = format!(
         "wss://api.deepgram.com/v1/listen\
-         ?token={api_key}\
-         &model=nova-2\
+         ?model=nova-2\
          &encoding=linear16\
          &sample_rate={sample_rate}\
          &channels=1\
@@ -64,10 +67,17 @@ pub async fn run_deepgram(
          &vad_events=true"
     );
 
-    let (ws_stream, _) = connect_async(url).await.map_err(|e| {
+    let mut request = url.into_client_request().map_err(|e| e.to_string())?;
+    request.headers_mut().insert(
+        http::header::AUTHORIZATION,
+        http::HeaderValue::from_str(&format!("Token {api_key}"))
+            .map_err(|e| e.to_string())?,
+    );
+
+    let (ws_stream, _) = connect_async(request).await.map_err(|e| {
         let s = e.to_string();
         if s.contains("401") || s.contains("Unauthorized") {
-            "Deepgram API key rejected (401). Open Settings and enter a valid Deepgram key.".to_string()
+            "Deepgram 401: API key is invalid or revoked. Check DEEPGRAM_KEY in .env.local / .cargo/config.toml".to_string()
         } else {
             s
         }
@@ -86,11 +96,8 @@ pub async fn run_deepgram(
                 None => break,
             }
         }
-        // Send close-stream signal
         let close = serde_json::json!({"type":"CloseStream"});
-        let _ = write
-            .send(Message::Text(close.to_string()))
-            .await;
+        let _ = write.send(Message::Text(close.to_string())).await;
     });
 
     // Read transcripts
@@ -102,10 +109,7 @@ pub async fn run_deepgram(
                         if let Some(ch) = &result.channel {
                             if let Some(alt) = ch.alternatives.first() {
                                 if !alt.transcript.is_empty() {
-                                    on_transcript(
-                                        alt.transcript.clone(),
-                                        result.is_final,
-                                    );
+                                    on_transcript(alt.transcript.clone(), result.is_final);
                                 }
                             }
                         }
