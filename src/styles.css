@@ -224,67 +224,64 @@ body[data-mode="overlay"] .app {
 
 
 /* ─────────────────────────────────────────────────────────
-   Main body layout
+   Main body layout — unified overlay panel
 ───────────────────────────────────────────────────────── */
 .main-body {
   flex: 1; display: flex; flex-direction: column;
   overflow: hidden; min-height: 0;
-}
-
-
-/* ─────────────────────────────────────────────────────────
-   Transcript pane — compact context strip in overlay
-───────────────────────────────────────────────────────── */
-.transcript-pane {
-  height: 72px; flex-shrink: 0;
-  display: flex; flex-direction: column;
-  background: var(--s3);
-  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-  border-bottom: 1px solid var(--border);
-}
-
-.pane-label {
-  font-size: 9px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 1px; color: var(--t4); padding: 6px 14px 2px;
-}
-
-.transcript-scroll {
-  flex: 1; overflow-y: auto;
-  padding: 4px 14px 12px;
-  font-size: 12.5px; line-height: 1.78; color: var(--t2);
-}
-
-.transcript-empty {
-  display: block; padding: 22px 0 0;
-  font-size: 11.5px; color: var(--t4); text-align: center; line-height: 1.7;
-}
-
-.seg        { color: rgba(220, 232, 255, 0.7); }
-.seg-latest { color: var(--t1); font-weight: 500; }
-.seg-interim{ color: var(--t4); font-style: italic; }
-
-
-/* ─────────────────────────────────────────────────────────
-   Chat pane — dominant, takes remaining height
-───────────────────────────────────────────────────────── */
-.chat-pane {
-  flex: 1; min-height: 0;
-  display: flex; flex-direction: column;
   background: var(--s2);
   backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
   border-radius: 0 0 var(--r-lg) var(--r-lg);
 }
 
-.chat-messages {
-  flex: 1; overflow-y: auto;
+/* Unified scrollable feed: transcript heard items + chat messages */
+.unified-feed {
+  flex: 1; min-height: 0;
+  overflow-y: auto;
   padding: 8px 10px 4px;
-  display: flex; flex-direction: column; gap: 6px;
+  display: flex; flex-direction: column; gap: 4px;
 }
 
-.chat-empty {
-  text-align: center; padding: 18px 0 0;
-  font-size: 11px; color: var(--t4);
+.feed-empty {
+  text-align: center; padding: 24px 0 0;
+  font-size: 11px; color: var(--t4); line-height: 1.7;
 }
+
+/* Heard (transcript) items — subtle caption strip */
+.heard-section {
+  display: flex; flex-direction: column; gap: 2px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+
+.heard-item {
+  font-size: 11.5px; color: var(--t3); line-height: 1.65;
+}
+
+.heard-item.heard-interim { color: var(--t4); font-style: italic; }
+
+/* Quick action pills — visible only when Auto is OFF */
+.quick-actions {
+  display: flex; gap: 5px; flex-wrap: wrap;
+  padding: 5px 8px 4px;
+  flex-shrink: 0;
+}
+
+.quick-btn {
+  display: inline-flex; align-items: center;
+  padding: 4px 11px; border-radius: 20px;
+  border: 1px solid var(--border-hi);
+  background: rgba(255,255,255,0.04);
+  color: var(--t2); font-size: 11px; font-weight: 500;
+  cursor: pointer; transition: all 0.13s;
+  font-family: 'Outfit', inherit; white-space: nowrap;
+}
+.quick-btn:hover:not(:disabled) {
+  background: var(--accent-soft); border-color: rgba(20,184,166,0.35);
+  color: var(--accent-text);
+}
+.quick-btn:disabled { opacity: 0.28; cursor: not-allowed; }
 
 .chat-msg { display: flex; align-items: flex-end; gap: 4px; }
 .chat-msg-user      { flex-direction: row-reverse; }

@@ -61,8 +61,7 @@ export default function MeetingScreen({ onBack }: Props) {
 
   const meetingStartedAt = useRef(Date.now());
   const timerRef         = useRef<ReturnType<typeof setInterval> | null>(null);
-  const transcriptEndRef = useRef<HTMLDivElement>(null);
-  const chatEndRef       = useRef<HTMLDivElement>(null);
+  const feedEndRef       = useRef<HTMLDivElement>(null);
 
   const aiThinkingRef = useRef(false);
   const autoAskRef    = useRef(false);
@@ -142,8 +141,9 @@ export default function MeetingScreen({ onBack }: Props) {
     return () => { unsubs.forEach(p => p.then(f => f())); };
   }, [addToast]);
 
-  useEffect(() => { transcriptEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [segments, interimText]);
-  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); },       [messages, aiThinking]);
+  useEffect(() => {
+    feedEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [segments, interimText, messages, aiThinking]);
 
   const handleDragStart = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0) return;
@@ -202,6 +202,7 @@ export default function MeetingScreen({ onBack }: Props) {
   };
 
   const recentSegs = segments.slice(-30);
+  const isEmpty = segments.length === 0 && !interimText && messages.length === 0 && !aiThinking;
 
   return (
     <div className="app" style={{ opacity: opacity / 100 }}>
@@ -284,78 +285,92 @@ export default function MeetingScreen({ onBack }: Props) {
           </div>
 
           <div className="main-body">
-            <div className="transcript-pane" role="log" aria-live="polite">
-              <div className="pane-label">Live Transcript</div>
-              <div className="transcript-scroll">
-                {segments.length === 0 && !interimText && (
-                  <span className="transcript-empty">
-                    {isRecording ? "Listening to system audio…" : "Press Record to start capturing audio"}
-                  </span>
-                )}
-                {recentSegs.map((seg, i) => (
-                  <span key={seg.id} className={`seg${i === recentSegs.length - 1 ? " seg-latest" : ""}`}>
-                    {seg.text}{" "}
-                  </span>
-                ))}
-                {interimText && <span className="seg seg-interim">{interimText}</span>}
-                <div ref={transcriptEndRef} />
-              </div>
-            </div>
+            <div className="unified-feed" role="log" aria-live="polite">
+              {isEmpty && (
+                <div className="feed-empty">
+                  {isRecording ? "Listening to system audio…" : "Press Record to start capturing audio"}
+                </div>
+              )}
 
-            <div className="chat-pane">
-              <div className="chat-messages" aria-live="polite">
-                {messages.length === 0 && !aiThinking && (
-                  <div className="chat-empty">Ask a question about the conversation</div>
-                )}
-                {messages.map(m => (
-                  <div key={m.id} className={`chat-msg chat-msg-${m.role}`}>
-                    {m.role === "user" ? (
-                      <>
-                        <span className="chat-bubble user-bubble">{m.content}</span>
+              {(recentSegs.length > 0 || interimText) && (
+                <div className="heard-section">
+                  {recentSegs.map(seg => (
+                    <div key={seg.id} className="heard-item">{seg.text}</div>
+                  ))}
+                  {interimText && (
+                    <div className="heard-item heard-interim">{interimText}</div>
+                  )}
+                </div>
+              )}
+
+              {messages.map(m => (
+                <div key={m.id} className={`chat-msg chat-msg-${m.role}`}>
+                  {m.role === "user" ? (
+                    <>
+                      <span className="chat-bubble user-bubble">{m.content}</span>
+                      <button className="delete-msg-btn" title="Delete" onClick={() => deleteMessage(m.id)}>
+                        <IconX size={10} />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <div className="ai-avatar"><IconGhost size={11} /></div>
+                      <SimpleMarkdown text={m.content} className="chat-bubble ai-bubble" />
+                      <div className="msg-actions">
+                        <button className="copy-msg-btn"
+                          onClick={() => copyText(m.content).then(ok => ok && addToast("Copied", "success"))}>
+                          <IconCopy size={11} />
+                        </button>
                         <button className="delete-msg-btn" title="Delete" onClick={() => deleteMessage(m.id)}>
                           <IconX size={10} />
                         </button>
-                      </>
-                    ) : (
-                      <>
-                        <div className="ai-avatar"><IconGhost size={11} /></div>
-                        <SimpleMarkdown text={m.content} className="chat-bubble ai-bubble" />
-                        <div className="msg-actions">
-                          <button className="copy-msg-btn"
-                            onClick={() => copyText(m.content).then(ok => ok && addToast("Copied", "success"))}>
-                            <IconCopy size={11} />
-                          </button>
-                          <button className="delete-msg-btn" title="Delete" onClick={() => deleteMessage(m.id)}>
-                            <IconX size={10} />
-                          </button>
-                        </div>
-                      </>
-                    )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+
+              {aiThinking && (
+                <div className="chat-msg chat-msg-assistant">
+                  <div className="ai-avatar"><IconGhost size={11} /></div>
+                  <div className="chat-bubble ai-bubble thinking-bubble">
+                    <span className="dot" /><span className="dot" /><span className="dot" />
                   </div>
-                ))}
-                {aiThinking && (
-                  <div className="chat-msg chat-msg-assistant">
-                    <div className="ai-avatar"><IconGhost size={11} /></div>
-                    <div className="chat-bubble ai-bubble thinking-bubble">
-                      <span className="dot" /><span className="dot" /><span className="dot" />
-                    </div>
-                  </div>
-                )}
-                <div ref={chatEndRef} />
-              </div>
-              <div className="chat-input-row">
-                <input
-                  className="chat-input"
-                  placeholder={aiThinking ? "Thinking…" : "Ask about the conversation…"}
-                  value={chatInput}
-                  onChange={e => setChatInput(e.target.value)}
-                  onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                  disabled={aiThinking}
-                />
-                <button className="send-btn" onClick={handleSend} disabled={aiThinking || !chatInput.trim()}>
-                  {aiThinking ? <span className="spinner" /> : <IconZap size={13} />}
+                </div>
+              )}
+
+              <div ref={feedEndRef} />
+            </div>
+
+            {!autoAsk && (
+              <div className="quick-actions">
+                <button className="quick-btn" onClick={() => handleAskAI("")}
+                  disabled={aiThinking}>
+                  Assist
+                </button>
+                <button className="quick-btn" onClick={() => handleAskAI("What should I say next?")}
+                  disabled={aiThinking}>
+                  What should I say?
+                </button>
+                <button className="quick-btn" onClick={() => handleAskAI("What are good follow-up questions to ask?")}
+                  disabled={aiThinking}>
+                  Follow-up questions
                 </button>
               </div>
+            )}
+
+            <div className="chat-input-row">
+              <input
+                className="chat-input"
+                placeholder={aiThinking ? "Thinking…" : "Ask about the conversation…"}
+                value={chatInput}
+                onChange={e => setChatInput(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+                disabled={aiThinking}
+              />
+              <button className="send-btn" onClick={handleSend} disabled={aiThinking || !chatInput.trim()}>
+                {aiThinking ? <span className="spinner" /> : <IconZap size={13} />}
+              </button>
             </div>
           </div>
         </>
