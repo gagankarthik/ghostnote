@@ -24,6 +24,8 @@ chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1", features = ["v4"] }
 base64 = "0.22"
 image = { version = "0.25", default-features = false, features = ["jpeg"] }
+aws-sdk-dynamodb   = "1"
+aws-credential-types = { version = "1", features = ["hardcoded-credentials"] }
 
 [target.'cfg(windows)'.dependencies]
 wasapi = "0.23"

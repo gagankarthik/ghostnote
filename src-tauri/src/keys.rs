@@ -13,6 +13,20 @@
 // Once compiled, the keys are embedded in the binary — no .env file,
 // no Settings UI needed.  Users receive the app ready to run.
 
+// AWS credentials for DynamoDB (bake via [env] in .cargo/config.toml)
+pub const AWS_ACCESS_KEY_ID: &str = match option_env!("AWS_ACCESS_KEY_ID") {
+    Some(k) => k,
+    None => "",
+};
+pub const AWS_SECRET_ACCESS_KEY: &str = match option_env!("AWS_SECRET_ACCESS_KEY") {
+    Some(k) => k,
+    None => "",
+};
+pub const AWS_REGION: &str = match option_env!("AWS_REGION") {
+    Some(k) => k,
+    None => "us-east-2",
+};
+
 pub const OPENAI_KEY: &str = match option_env!("OPENAI_KEY") {
     Some(k) => k,
     None => "",

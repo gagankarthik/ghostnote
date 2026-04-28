@@ -186,9 +186,14 @@ body[data-mode="overlay"] .app {
 }
 .btn-record {
   background: var(--accent-soft); color: var(--accent-text);
-  border-color: rgba(20,184,166,0.24);
+  border-color: rgba(20,184,166,0.28);
+  box-shadow: 0 0 10px rgba(20,184,166,0.06);
+  transition: all 0.15s;
 }
-.btn-record:hover { background: var(--accent-mid); border-color: rgba(20,184,166,0.4); }
+.btn-record:hover {
+  background: var(--accent-mid); border-color: rgba(20,184,166,0.45);
+  box-shadow: 0 0 16px rgba(20,184,166,0.14);
+}
 
 .btn-stop {
   background: var(--stop-soft); color: #FCA5A5;
@@ -531,18 +536,25 @@ code {
 
 .btn-auth {
   display: flex; align-items: center; justify-content: center;
-  min-height: 38px;
+  min-height: 40px;
   border-radius: var(--r-sm);
-  border: 1px solid rgba(20,184,166,0.28);
-  background: var(--accent-mid); color: var(--t1);
-  font-size: 12.5px; font-weight: 700; cursor: pointer;
-  transition: background 0.13s, border-color 0.13s;
-  font-family: 'Outfit', inherit; letter-spacing: 0.2px;
+  border: 1px solid rgba(20,184,166,0.4);
+  background: rgba(20,184,166,0.22); color: var(--t1);
+  font-size: 13px; font-weight: 700; cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+  font-family: 'Outfit', inherit; letter-spacing: 0.3px;
+  box-shadow: 0 0 16px rgba(20,184,166,0.08), inset 0 1px 0 rgba(255,255,255,0.06);
 }
 .btn-auth:hover:not(:disabled) {
-  background: rgba(20,184,166,0.28); border-color: rgba(20,184,166,0.46);
+  background: rgba(20,184,166,0.30);
+  border-color: rgba(20,184,166,0.6);
+  box-shadow: 0 0 28px rgba(20,184,166,0.18), inset 0 1px 0 rgba(255,255,255,0.08);
 }
-.btn-auth:disabled { opacity: 0.32; cursor: not-allowed; }
+.btn-auth:active:not(:disabled) {
+  background: rgba(20,184,166,0.22);
+  box-shadow: 0 0 10px rgba(20,184,166,0.1);
+}
+.btn-auth:disabled { opacity: 0.30; cursor: not-allowed; }
 
 .auth-link {
   background: none; border: none; color: var(--t3);
@@ -567,16 +579,24 @@ code {
 .start-meeting-section { padding: 14px 12px 10px; flex-shrink: 0; }
 
 .btn-start-meeting {
-  width: 100%; padding: 12px 0;
+  width: 100%; padding: 13px 0;
   border-radius: var(--r);
-  background: var(--accent-soft);
-  border: 1px solid rgba(20,184,166,0.26);
-  color: var(--accent-text); font-size: 13px; font-weight: 700;
-  cursor: pointer; transition: background 0.13s, border-color 0.13s;
-  font-family: 'Outfit', inherit; letter-spacing: 0.2px;
+  background: rgba(20,184,166,0.18);
+  border: 1px solid rgba(20,184,166,0.38);
+  color: #CCFBF1; font-size: 13.5px; font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+  font-family: 'Outfit', inherit; letter-spacing: 0.3px;
+  box-shadow: 0 0 20px rgba(20,184,166,0.08), inset 0 1px 0 rgba(255,255,255,0.06);
 }
 .btn-start-meeting:hover {
-  background: var(--accent-mid); border-color: rgba(20,184,166,0.44);
+  background: rgba(20,184,166,0.26);
+  border-color: rgba(20,184,166,0.55);
+  box-shadow: 0 0 32px rgba(20,184,166,0.16), inset 0 1px 0 rgba(255,255,255,0.08);
+}
+.btn-start-meeting:active {
+  background: rgba(20,184,166,0.16);
+  box-shadow: 0 0 12px rgba(20,184,166,0.08);
 }
 
 .history-section-label {
@@ -685,12 +705,17 @@ code {
   gap: 10px; padding: 24px 0 28px;
 }
 .auth-brand-icon {
-  width: 52px; height: 52px; border-radius: 16px;
-  background: var(--accent-soft);
-  border: 1px solid rgba(20,184,166,0.22);
+  width: 56px; height: 56px; border-radius: 18px;
+  background: rgba(20,184,166,0.10);
+  border: 1px solid rgba(20,184,166,0.25);
   display: flex; align-items: center; justify-content: center;
   color: var(--accent);
-  box-shadow: 0 0 28px rgba(20,184,166,0.12);
+  box-shadow: 0 0 0 6px rgba(20,184,166,0.04), 0 0 32px rgba(20,184,166,0.14);
+  animation: brandPulse 4s ease-in-out infinite;
+}
+@keyframes brandPulse {
+  0%, 100% { box-shadow: 0 0 0 6px rgba(20,184,166,0.04), 0 0 32px rgba(20,184,166,0.14); }
+  50%       { box-shadow: 0 0 0 10px rgba(20,184,166,0.02), 0 0 44px rgba(20,184,166,0.20); }
 }
 .auth-brand-name {
   font-size: 22px; font-weight: 800; color: var(--t1);

@@ -1,6 +1,7 @@
 mod audio;
 mod commands;
 mod deepgram;
+mod dynamodb;
 mod keys;
 mod openai;
 mod screenshot;
@@ -13,6 +14,7 @@ pub struct AppState {
     pub is_recording: Arc<AtomicBool>,
     pub stop_flag: Mutex<Option<Arc<AtomicBool>>>,
     pub transcript_buffer: Arc<Mutex<Vec<String>>>,
+    pub dynamo_client: Mutex<Option<aws_sdk_dynamodb::Client>>,
 }
 
 /// Read a KEY=value pair from a .env-style file string.
@@ -64,6 +66,24 @@ fn load_keys_from_dotenv() -> (String, String) {
     (String::new(), String::new())
 }
 
+fn build_dynamo_client() -> Option<aws_sdk_dynamodb::Client> {
+    let key_id = keys::AWS_ACCESS_KEY_ID;
+    let secret  = keys::AWS_SECRET_ACCESS_KEY;
+    let region  = keys::AWS_REGION;
+    if key_id.is_empty() || secret.is_empty() {
+        return None;
+    }
+    let credentials = aws_credential_types::Credentials::new(
+        key_id, secret, None, None, "ghostnote",
+    );
+    let config = aws_sdk_dynamodb::Config::builder()
+        .credentials_provider(credentials)
+        .region(aws_sdk_dynamodb::config::Region::new(region))
+        .behavior_version(aws_sdk_dynamodb::config::BehaviorVersion::latest())
+        .build();
+    Some(aws_sdk_dynamodb::Client::from_conf(config))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let state = AppState {
@@ -72,6 +92,7 @@ pub fn run() {
         is_recording: Arc::new(AtomicBool::new(false)),
         stop_flag: Mutex::new(None),
         transcript_buffer: Arc::new(Mutex::new(Vec::new())),
+        dynamo_client: Mutex::new(build_dynamo_client()),
     };
 
     tauri::Builder::default()
@@ -146,6 +167,9 @@ pub fn run() {
             commands::clear_session,
             commands::capture_screenshot,
             commands::set_opacity,
+            commands::save_meeting,
+            commands::get_meetings,
+            commands::delete_meeting,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Ghostnote");

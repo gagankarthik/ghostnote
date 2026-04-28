@@ -180,3 +180,43 @@ pub fn capture_screenshot() -> Result<String, String> {
 pub fn set_opacity(_opacity: f64, _app: AppHandle) -> Result<(), String> {
     Ok(())
 }
+
+// ── DynamoDB ──────────────────────────────────────────────────────────────────
+
+#[tauri::command]
+pub async fn save_meeting(
+    meeting: crate::dynamodb::MeetingRecord,
+    user_email: String,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let client = state.dynamo_client.lock().unwrap().clone();
+    match client {
+        Some(c) => crate::dynamodb::save_meeting(&c, &user_email, &meeting).await,
+        None    => Err("DynamoDB not configured — add AWS credentials to .cargo/config.toml".into()),
+    }
+}
+
+#[tauri::command]
+pub async fn get_meetings(
+    user_email: String,
+    state: State<'_, AppState>,
+) -> Result<Vec<crate::dynamodb::MeetingRecord>, String> {
+    let client = state.dynamo_client.lock().unwrap().clone();
+    match client {
+        Some(c) => crate::dynamodb::get_meetings(&c, &user_email).await,
+        None    => Err("DynamoDB not configured — add AWS credentials to .cargo/config.toml".into()),
+    }
+}
+
+#[tauri::command]
+pub async fn delete_meeting(
+    meeting_id: String,
+    user_email: String,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let client = state.dynamo_client.lock().unwrap().clone();
+    match client {
+        Some(c) => crate::dynamodb::delete_meeting(&c, &user_email, &meeting_id).await,
+        None    => Err("DynamoDB not configured — add AWS credentials to .cargo/config.toml".into()),
+    }
+}

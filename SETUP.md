@@ -262,3 +262,10 @@ Uses `SetWindowDisplayAffinity(WDA_EXCLUDEFROMCAPTURE)` — a Windows 10 2004+ A
   Settings → Privacy & Security → Windows Security → App & browser control → Smart App Control → Off
 
   Then retry cargo check from the normal terminal.
+
+  aws dynamodb create-table \
+    --table-name ghostnote-meetings \
+    --attribute-definitions AttributeName=userId,AttributeType=S AttributeName=meetingId,AttributeType=S \
+    --key-schema AttributeName=userId,KeyType=HASH AttributeName=meetingId,KeyType=RANGE \
+    --billing-mode PAY_PER_REQUEST \
+    --region us-east-2
