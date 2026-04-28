@@ -78,7 +78,14 @@ impl OpenAIClient {
         if !resp.status().is_success() {
             let status = resp.status();
             let body = resp.text().await.unwrap_or_default();
-            return Err(format!("OpenAI error {status}: {body}"));
+            if status.as_u16() == 401 {
+                return Err("OpenAI key rejected — the key may be invalid, expired, or belong to a different project. Regenerate it at platform.openai.com.".into());
+            }
+            let msg = serde_json::from_str::<serde_json::Value>(&body)
+                .ok()
+                .and_then(|j| j["error"]["message"].as_str().map(|s| s.to_string()))
+                .unwrap_or_else(|| format!("HTTP {status}"));
+            return Err(format!("OpenAI: {msg}"));
         }
 
         let json: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;

@@ -13,5 +13,4 @@ export const api = {
   getTranscript:   ()                                     => invoke<string[]>("get_transcript"),
   clearSession:    ()                                     => invoke<void>("clear_session"),
   captureScreenshot: ()                                   => invoke<string>("capture_screenshot"),
-
 };

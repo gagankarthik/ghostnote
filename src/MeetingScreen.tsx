@@ -179,6 +179,10 @@ export default function MeetingScreen({ onBack }: Props) {
     handleAskAI(q);
   };
 
+  const deleteMessage = (id: string) => {
+    setMessages(prev => prev.filter(m => m.id !== id));
+  };
+
   const handleEndMeeting = () => {
     if (isRecording) { api.stopRecording(); setIsRecording(false); }
     const segs = segmentsRef.current;
@@ -197,7 +201,6 @@ export default function MeetingScreen({ onBack }: Props) {
     });
   };
 
-  const wordCount  = segments.reduce((n, s) => n + s.text.split(/\s+/).filter(Boolean).length, 0);
   const recentSegs = segments.slice(-30);
 
   return (
@@ -275,12 +278,6 @@ export default function MeetingScreen({ onBack }: Props) {
               </button>
             )}
             <div className="controls-spacer" />
-            {wordCount > 0 && <span className="word-count">{wordCount}w</span>}
-            <select className="mode-select" value={mode} onChange={e => setMode(e.target.value as AIMode)}>
-              <option value="interview">Interview</option>
-              <option value="meeting">Meeting</option>
-              <option value="notes">Notes</option>
-            </select>
             <button className="btn btn-ghost" onClick={handleClearSession}>
               <IconTrash size={12} />
             </button>
@@ -313,20 +310,32 @@ export default function MeetingScreen({ onBack }: Props) {
                 {messages.map(m => (
                   <div key={m.id} className={`chat-msg chat-msg-${m.role}`}>
                     {m.role === "user" ? (
-                      <span className="chat-bubble user-bubble">{m.content}</span>
+                      <>
+                        <span className="chat-bubble user-bubble">{m.content}</span>
+                        <button className="delete-msg-btn" title="Delete" onClick={() => deleteMessage(m.id)}>
+                          <IconX size={10} />
+                        </button>
+                      </>
                     ) : (
                       <>
+                        <div className="ai-avatar"><IconGhost size={11} /></div>
                         <SimpleMarkdown text={m.content} className="chat-bubble ai-bubble" />
-                        <button className="copy-msg-btn"
-                          onClick={() => copyText(m.content).then(ok => ok && addToast("Copied", "success"))}>
-                          <IconCopy size={11} />
-                        </button>
+                        <div className="msg-actions">
+                          <button className="copy-msg-btn"
+                            onClick={() => copyText(m.content).then(ok => ok && addToast("Copied", "success"))}>
+                            <IconCopy size={11} />
+                          </button>
+                          <button className="delete-msg-btn" title="Delete" onClick={() => deleteMessage(m.id)}>
+                            <IconX size={10} />
+                          </button>
+                        </div>
                       </>
                     )}
                   </div>
                 ))}
                 {aiThinking && (
                   <div className="chat-msg chat-msg-assistant">
+                    <div className="ai-avatar"><IconGhost size={11} /></div>
                     <div className="chat-bubble ai-bubble thinking-bubble">
                       <span className="dot" /><span className="dot" /><span className="dot" />
                     </div>
@@ -355,6 +364,23 @@ export default function MeetingScreen({ onBack }: Props) {
       {showSettings && (
         <div className="settings-view">
           <div className="settings-section">
+            <div className="settings-title">Mode</div>
+            <div className="mode-picker">
+              {(["interview", "meeting", "notes"] as AIMode[]).map(m => (
+                <button key={m}
+                  className={`mode-btn${mode === m ? " active" : ""}`}
+                  onClick={() => setMode(m as AIMode)}
+                  aria-pressed={mode === m}>
+                  {m.charAt(0).toUpperCase() + m.slice(1)}
+                </button>
+              ))}
+            </div>
+            <p className="settings-hint">
+              <strong>Interview</strong> — STAR answers · <strong>Meeting</strong> — insights · <strong>Notes</strong> — bullets
+            </p>
+          </div>
+          <div className="ai-divider" />
+          <div className="settings-section">
             <div className="settings-title">AI Model</div>
             <div className="model-picker">
               {(["gpt-4o-mini", "gpt-4o"] as AIModel[]).map(m => (
@@ -371,7 +397,7 @@ export default function MeetingScreen({ onBack }: Props) {
             <div className="settings-title">Behaviour</div>
             <label className="toggle-row">
               <input type="checkbox" checked={autoAsk} onChange={e => setAutoAsk(e.target.checked)}
-                style={{ accentColor: "#7C3AED" }} />
+                style={{ accentColor: "#14B8A6" }} />
               <span>Auto-ask AI after each utterance</span>
             </label>
             <p className="settings-hint">AI responds automatically as each sentence completes.</p>

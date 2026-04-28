@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import AuthScreen    from "./AuthScreen";
 import HistoryScreen from "./HistoryScreen";
 import MeetingScreen from "./MeetingScreen";
@@ -8,6 +9,12 @@ export default function App() {
   const [appState, setAppState] = useState<AppState>("loading");
   const [user,     setUser]     = useState<AuthUser | null>(null);
   const [meetings, setMeetings] = useState<MeetingRecord[]>([]);
+
+  useEffect(() => {
+    const isMeeting = appState === "meeting";
+    document.body.dataset.mode = isMeeting ? "overlay" : "app";
+    getCurrentWindow().setAlwaysOnTop(isMeeting).catch(() => {});
+  }, [appState]);
 
   useEffect(() => {
     const email        = localStorage.getItem("gn_email");
@@ -58,6 +65,13 @@ export default function App() {
       meetings={meetings}
       onStartMeeting={() => setAppState("meeting")}
       onSignOut={handleSignOut}
+      onDeleteMeeting={(id: string) => {
+        setMeetings(prev => {
+          const updated = prev.filter(m => m.id !== id);
+          localStorage.setItem("gn_meetings", JSON.stringify(updated));
+          return updated;
+        });
+      }}
     />
   );
   return <MeetingScreen user={user!} onBack={handleEndMeeting} />;

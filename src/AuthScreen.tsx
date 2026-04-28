@@ -31,45 +31,39 @@ export default function AuthScreen({ onAuth }: Props) {
   const handleSignIn = async () => {
     if (!email || !password) return;
     setLoading(true); setError("");
-    try {
-      onAuth(await signIn(email, password));
-    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+    try { onAuth(await signIn(email, password)); }
+    catch (e) { setError(e instanceof Error ? e.message : String(e)); }
     finally { setLoading(false); }
   };
 
   const handleSignUp = async () => {
     if (!email || !password || !name) return;
     setLoading(true); setError("");
-    try {
-      await signUp(email, password, name);
-      setStep("verify");
-    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+    try { await signUp(email, password, name); setStep("verify"); }
+    catch (e) { setError(e instanceof Error ? e.message : String(e)); }
     finally { setLoading(false); }
   };
 
   const handleVerify = async () => {
     if (!code) return;
     setLoading(true); setError("");
-    try {
-      await confirmSignUp(email, code);
-      onAuth(await signIn(email, password));
-    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+    try { await confirmSignUp(email, code); onAuth(await signIn(email, password)); }
+    catch (e) { setError(e instanceof Error ? e.message : String(e)); }
     finally { setLoading(false); }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key !== "Enter" || loading) return;
-    if (step === "verify") handleVerify();
-    else if (tab === "signin") handleSignIn();
-    else handleSignUp();
+    if (step === "verify")        handleVerify();
+    else if (tab === "signin")    handleSignIn();
+    else                          handleSignUp();
   };
 
   return (
     <div className="app">
-      {/* Drag region / window controls */}
-      <div className="titlebar" onPointerDown={handleDragStart} data-tauri-drag-region>
+      <div className="titlebar auth-titlebar" onPointerDown={handleDragStart} data-tauri-drag-region>
         <div className="logo">
-          <IconGhost size={14} />
+          <IconGhost size={13} />
           <span>Ghostnote</span>
         </div>
         <div className="titlebar-spacer" />
@@ -86,15 +80,28 @@ export default function AuthScreen({ onAuth }: Props) {
       </div>
 
       <div className="auth-body">
+
+        {/* ── Brand ── */}
+        <div className="auth-brand">
+          <div className="auth-brand-icon">
+            <IconGhost size={26} />
+          </div>
+          <h1 className="auth-brand-name">Ghostnote</h1>
+          <p className="auth-brand-tagline">
+            Invisible AI assistant for interviews &amp; meetings
+          </p>
+        </div>
+
+        {/* ── Form ── */}
         {step === "verify" ? (
           <div className="auth-card">
-            <div className="auth-card-title">Verify your email</div>
+            <div className="auth-card-title">Check your inbox</div>
             <p className="auth-hint">
-              We sent a code to <strong>{email}</strong>
+              Verification code sent to <strong>{email}</strong>
             </p>
             <input
               className="auth-input"
-              placeholder="6-digit verification code"
+              placeholder="6-digit code"
               value={code}
               onChange={e => setCode(e.target.value)}
               onKeyDown={handleKeyDown}
@@ -103,10 +110,10 @@ export default function AuthScreen({ onAuth }: Props) {
             />
             {error && <div className="auth-error">{error}</div>}
             <button className="btn-auth" onClick={handleVerify} disabled={loading || !code}>
-              {loading ? <span className="spinner" /> : "Verify & Sign In"}
+              {loading ? <span className="spinner" /> : "Verify & Continue"}
             </button>
             <button className="auth-link" onClick={() => { setStep("form"); setError(""); }}>
-              Back
+              ← Back
             </button>
           </div>
         ) : (
@@ -123,6 +130,7 @@ export default function AuthScreen({ onAuth }: Props) {
                 Create Account
               </button>
             </div>
+
             {tab === "signup" && (
               <input
                 className="auth-input"
@@ -137,7 +145,7 @@ export default function AuthScreen({ onAuth }: Props) {
             <input
               className="auth-input"
               type="email"
-              placeholder="Email"
+              placeholder="Email address"
               value={email}
               onChange={e => setEmail(e.target.value)}
               onKeyDown={handleKeyDown}
@@ -152,7 +160,9 @@ export default function AuthScreen({ onAuth }: Props) {
               onKeyDown={handleKeyDown}
               autoComplete={tab === "signin" ? "current-password" : "new-password"}
             />
+
             {error && <div className="auth-error">{error}</div>}
+
             <button
               className="btn-auth"
               onClick={tab === "signin" ? handleSignIn : handleSignUp}

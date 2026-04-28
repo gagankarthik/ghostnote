@@ -20,7 +20,7 @@ pub async fn start_recording(
 
     let deepgram_key = state.deepgram_key.lock().unwrap().clone();
     if deepgram_key.is_empty() {
-        return Err("Deepgram API key not set. Open ⚙ Settings and paste your key.".into());
+        return Err("Deepgram API key not configured. Contact your administrator.".into());
     }
 
     let (audio_tx, audio_rx) = mpsc::unbounded_channel::<Vec<u8>>();
@@ -93,7 +93,7 @@ pub async fn ask_ai(
 ) -> Result<String, String> {
     let key = state.openai_key.lock().unwrap().clone();
     if key.is_empty() {
-        return Err("OpenAI API key not set. Open ⚙ Settings and paste your key.".into());
+        return Err("OpenAI API key not configured. Contact your administrator.".into());
     }
 
     let transcript = {
@@ -143,7 +143,7 @@ pub async fn generate_notes(
 ) -> Result<String, String> {
     let key = state.openai_key.lock().unwrap().clone();
     if key.is_empty() {
-        return Err("OpenAI API key not set.".into());
+        return Err("OpenAI API key not configured. Contact your administrator.".into());
     }
 
     let transcript = {
