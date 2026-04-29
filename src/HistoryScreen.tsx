@@ -117,7 +117,7 @@ export default function HistoryScreen({ user, meetings, onStartMeeting, onSignOu
               <div className="meetings-panel-header">
                 <h1 className="panel-title">Meetings</h1>
                 <p className="panel-sub">
-                  Real-time AI for your interviews &amp; meetings — invisible to screen capture
+                  Real-time AI for your meetings — invisible to screen capture
                 </p>
               </div>
 
@@ -205,7 +205,7 @@ export default function HistoryScreen({ user, meetings, onStartMeeting, onSignOu
               <div className="settings-section">
                 <div className="settings-title">About</div>
                 <p className="settings-hint" style={{ lineHeight: 1.75 }}>
-                  Ghostnote v0.1.0 — real-time AI assistant for interviews and meetings.
+                  Ghostnote v0.1.0 — real-time AI assistant for meetings.
                   Powered by Deepgram nova-2 for transcription and GPT-4o-mini for
                   instant, accurate assistance.
                 </p>

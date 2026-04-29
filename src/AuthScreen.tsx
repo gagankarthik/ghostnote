@@ -94,7 +94,7 @@ export default function AuthScreen({ onAuth }: Props) {
           </div>
           <h1 className="auth-brand-name">Ghostnote</h1>
           <p className="auth-brand-tagline">
-            Invisible AI for interviews &amp; meetings
+            Invisible AI for your meetings
           </p>
         </div>
 
