@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
 import AuthScreen    from "./AuthScreen";
 import HistoryScreen from "./HistoryScreen";
 import MeetingScreen from "./MeetingScreen";
@@ -26,11 +26,17 @@ export default function App() {
   const [user,     setUser]     = useState<AuthUser | null>(null);
   const [meetings, setMeetings] = useState<MeetingRecord[]>([]);
 
-  // Toggle window overlay mode + alwaysOnTop when entering/leaving meeting
+  // Resize window and toggle overlay mode when switching between app and meeting
   useEffect(() => {
+    const win = getCurrentWindow();
     const isMeeting = appState === "meeting";
     document.body.dataset.mode = isMeeting ? "overlay" : "app";
-    getCurrentWindow().setAlwaysOnTop(isMeeting).catch(() => {});
+    win.setAlwaysOnTop(isMeeting).catch(() => {});
+    if (isMeeting) {
+      win.setSize(new LogicalSize(420, 600)).catch(() => {});
+    } else if (appState === "auth" || appState === "history") {
+      win.setSize(new LogicalSize(720, 520)).catch(() => {});
+    }
   }, [appState]);
 
   // Resume session on startup

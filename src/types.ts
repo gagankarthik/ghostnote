@@ -32,7 +32,4 @@ export interface AuthUser {
   refreshToken: string;
 }
 
-export type AIMode   = "interview" | "meeting" | "notes";
-export type AIModel  = "gpt-4o-mini" | "gpt-4o";
-export type AppView  = "main" | "settings";
 export type AppState = "loading" | "auth" | "history" | "meeting";

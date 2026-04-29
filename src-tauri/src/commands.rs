@@ -80,69 +80,11 @@ pub fn stop_recording(state: State<AppState>) {
     state.is_recording.store(false, Ordering::Relaxed);
 }
 
-// ── AI (non-streaming, legacy) ────────────────────────────────────────────────
-
-#[tauri::command]
-pub async fn ask_ai(
-    question: String,
-    mode: String,
-    model: String,
-    use_screen: bool,
-    state: State<'_, AppState>,
-    app: AppHandle,
-) -> Result<String, String> {
-    let key = state.openai_key.lock().unwrap().clone();
-    if key.is_empty() {
-        return Err("OpenAI API key not configured. Contact your administrator.".into());
-    }
-
-    let transcript = {
-        let buf = state.transcript_buffer.lock().unwrap();
-        let start = buf.len().saturating_sub(20);
-        buf[start..].join("\n")
-    };
-
-    if transcript.is_empty() {
-        return Err("No transcript yet — start recording first.".into());
-    }
-
-    let screenshot = if use_screen {
-        match crate::screenshot::capture_screenshot_base64() {
-            Ok(img) => Some(img),
-            Err(e) => {
-                eprintln!("[screenshot] {e}");
-                None
-            }
-        }
-    } else {
-        None
-    };
-
-    let _ = app.emit("ai-thinking", true);
-
-    let client = OpenAIClient::new(key);
-    let result = client
-        .ask_with_mode(&transcript, &question, &mode, &model, screenshot.as_deref())
-        .await;
-
-    let _ = app.emit("ai-thinking", false);
-
-    match result {
-        Ok(answer) => {
-            let _ = app.emit("ai-response", &answer);
-            Ok(answer)
-        }
-        Err(e) => Err(e),
-    }
-}
-
 // ── AI (streaming — primary path) ────────────────────────────────────────────
 
 #[tauri::command]
 pub async fn ask_ai_stream(
     question: String,
-    mode: String,
-    model: String,
     use_screen: bool,
     state: State<'_, AppState>,
     app: AppHandle,
@@ -178,11 +120,9 @@ pub async fn ask_ai_stream(
     let client = OpenAIClient::new(key);
 
     let result = client
-        .ask_with_mode_stream(
+        .ask_stream(
             &transcript,
             &question,
-            &mode,
-            &model,
             screenshot.as_deref(),
             move |token| {
                 let _ = app_clone.emit("ai-chunk", &token);
@@ -205,10 +145,7 @@ pub async fn ask_ai_stream(
 // ── Notes ─────────────────────────────────────────────────────────────────────
 
 #[tauri::command]
-pub async fn generate_notes(
-    model: String,
-    state: State<'_, AppState>,
-) -> Result<String, String> {
+pub async fn generate_notes(state: State<'_, AppState>) -> Result<String, String> {
     let key = state.openai_key.lock().unwrap().clone();
     if key.is_empty() {
         return Err("OpenAI API key not configured.".into());
@@ -224,7 +161,7 @@ pub async fn generate_notes(
     }
 
     let client = OpenAIClient::new(key);
-    client.generate_notes(&transcript, &model).await
+    client.generate_notes(&transcript).await
 }
 
 #[tauri::command]

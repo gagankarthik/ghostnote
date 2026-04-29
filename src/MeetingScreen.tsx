@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { api } from "./api";
-import { TranscriptSegment, ChatMessage, AIMode, AIModel, Toast, MeetingRecord, AuthUser } from "./types";
+import { TranscriptSegment, ChatMessage, Toast, MeetingRecord, AuthUser } from "./types";
 import {
   IconMic, IconSquare, IconZap, IconMonitor, IconFileText,
   IconSettings, IconMinus, IconX, IconCopy, IconArrowLeft,
@@ -108,8 +108,6 @@ export default function MeetingScreen({ onBack }: Props) {
   const [toasts,         setToasts]         = useState<Toast[]>([]);
   const [chatInput,      setChatInput]      = useState("");
   const [elapsed,        setElapsed]        = useState(0);
-  const [mode,           setMode]           = useState<AIMode>("interview");
-  const [aiModel,        setAiModel]        = useState<AIModel>("gpt-4o-mini");
   const [useScreen,      setUseScreen]      = useState(false);
   const [autoAsk,        setAutoAsk]        = useState(false);
   const [opacity,        setOpacity]        = useState(90);
@@ -124,19 +122,15 @@ export default function MeetingScreen({ onBack }: Props) {
   // Stable refs for async callbacks
   const aiThinkingRef  = useRef(false);
   const autoAskRef     = useRef(false);
-  const modeRef        = useRef<AIMode>("interview");
-  const aiModelRef     = useRef<AIModel>("gpt-4o-mini");
   const useScreenRef   = useRef(false);
   const segmentsRef    = useRef<TranscriptSegment[]>([]);
   const messagesRef    = useRef<ChatMessage[]>([]);
 
-  useEffect(() => { aiThinkingRef.current = aiThinking;     }, [aiThinking]);
-  useEffect(() => { autoAskRef.current    = autoAsk;        }, [autoAsk]);
-  useEffect(() => { modeRef.current       = mode;           }, [mode]);
-  useEffect(() => { aiModelRef.current    = aiModel;        }, [aiModel]);
-  useEffect(() => { useScreenRef.current  = useScreen;      }, [useScreen]);
-  useEffect(() => { segmentsRef.current   = segments;       }, [segments]);
-  useEffect(() => { messagesRef.current   = messages;       }, [messages]);
+  useEffect(() => { aiThinkingRef.current = aiThinking;  }, [aiThinking]);
+  useEffect(() => { autoAskRef.current    = autoAsk;     }, [autoAsk]);
+  useEffect(() => { useScreenRef.current  = useScreen;   }, [useScreen]);
+  useEffect(() => { segmentsRef.current   = segments;    }, [segments]);
+  useEffect(() => { messagesRef.current   = messages;    }, [messages]);
 
   const addToast = useCallback((message: string, type: Toast["type"] = "error") => {
     const id = String(++toastId);
@@ -168,7 +162,6 @@ export default function MeetingScreen({ onBack }: Props) {
     }
     setChatInput("");
 
-    // Create the streaming message placeholder
     const sid = String(++msgId);
     streamingMsgId.current    = sid;
     streamingContent.current  = "";
@@ -176,13 +169,11 @@ export default function MeetingScreen({ onBack }: Props) {
     setMessages(prev => [...prev, { id: sid, role: "assistant", content: "", streaming: true }]);
 
     try {
-      await api.askAiStream(question, modeRef.current, aiModelRef.current, useScreenRef.current);
-      // Mark streaming done — content already built via ai-chunk events
+      await api.askAiStream(question, useScreenRef.current);
       setMessages(prev =>
         prev.map(m => m.id === sid ? { ...m, content: streamingContent.current, streaming: false } : m)
       );
     } catch (e) {
-      // Remove the streaming placeholder and show error
       setMessages(prev => prev.filter(m => m.id !== sid));
       addToast(String(e));
     } finally {
@@ -201,7 +192,6 @@ export default function MeetingScreen({ onBack }: Props) {
 
   useEffect(() => {
     const unsubs = [
-      // Transcript
       listen<{ text: string; is_final: boolean }>("transcript", ({ payload }) => {
         if (payload.is_final) {
           setInterimText("");
@@ -212,11 +202,9 @@ export default function MeetingScreen({ onBack }: Props) {
         }
       }),
 
-      // Recording state
       listen<boolean>("recording-state", ({ payload }) => setIsRecording(payload)),
       listen<string>("recording-error",  ({ payload }) => { setIsRecording(false); addToast(payload); }),
 
-      // AI streaming chunks — append to streaming message
       listen<string>("ai-chunk", ({ payload }) => {
         const sid = streamingMsgId.current;
         if (sid) {
@@ -228,7 +216,6 @@ export default function MeetingScreen({ onBack }: Props) {
         }
       }),
 
-      // Hotkeys
       listen("hotkey-ask-ai",      () => handleAskAIRef.current("")),
       listen("toggle-visibility",  async () => {
         const win = getCurrentWindow();
@@ -269,7 +256,7 @@ export default function MeetingScreen({ onBack }: Props) {
     aiThinkingRef.current = true;
     setAiThinking(true);
     try {
-      const notes = await api.generateNotes(aiModel);
+      const notes = await api.generateNotes();
       setMessages(prev => [...prev, { id: String(++msgId), role: "assistant", content: notes }]);
     } catch (e) { addToast(String(e)); }
     finally { aiThinkingRef.current = false; setAiThinking(false); }
@@ -310,12 +297,6 @@ export default function MeetingScreen({ onBack }: Props) {
   const recentSegs = segments.slice(-8);
   const latestText = interimText || (recentSegs.length > 0 ? recentSegs[recentSegs.length - 1].text : "");
   const isEmpty = segments.length === 0 && !interimText && messages.length === 0 && !aiThinking;
-
-  const modeDescriptions: Record<AIMode, string> = {
-    interview: "STAR answers",
-    meeting:   "Key insights",
-    notes:     "Clean bullets",
-  };
 
   return (
     <div className="app" style={{ opacity: opacity / 100 }}>
@@ -411,10 +392,6 @@ export default function MeetingScreen({ onBack }: Props) {
 
             <div className="controls-spacer" />
 
-            <span style={{ fontSize: "9px", color: "var(--t4)", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.3px" }}>
-              {mode.toUpperCase()[0]}
-            </span>
-
             <button className="btn btn-ghost" onClick={handleClearSession} title="Clear session">
               <IconTrash size={11} />
             </button>
@@ -455,7 +432,7 @@ export default function MeetingScreen({ onBack }: Props) {
                   <div className="feed-empty-title">Ready to assist</div>
                   <div className="feed-empty-sub">
                     {isRecording
-                      ? `Listening in ${mode} mode · ${modeDescriptions[mode]}`
+                      ? "Listening · AI ready to help"
                       : "Press Record to start capturing audio"}
                   </div>
                 </div>
@@ -559,43 +536,6 @@ export default function MeetingScreen({ onBack }: Props) {
       {/* ── Settings ── */}
       {showSettings && (
         <div className="settings-view">
-
-          <div className="settings-section">
-            <div className="settings-title">Mode</div>
-            <div className="segmented-picker">
-              {(["interview", "meeting", "notes"] as AIMode[]).map(m => (
-                <button key={m}
-                  className={`seg-btn${mode === m ? " active" : ""}`}
-                  onClick={() => setMode(m)}
-                  aria-pressed={mode === m}>
-                  {m.charAt(0).toUpperCase() + m.slice(1)}
-                </button>
-              ))}
-            </div>
-            <p className="settings-hint">
-              <strong>Interview</strong> — STAR method answers &amp; coaching ·{" "}
-              <strong>Meeting</strong> — insights &amp; action items ·{" "}
-              <strong>Notes</strong> — bullet point extraction
-            </p>
-          </div>
-
-          <div className="settings-divider" />
-
-          <div className="settings-section">
-            <div className="settings-title">AI Model</div>
-            <div className="segmented-picker">
-              {(["gpt-4o-mini", "gpt-4o"] as AIModel[]).map(m => (
-                <button key={m} className={`seg-btn mono${aiModel === m ? " active" : ""}`}
-                  onClick={() => setAiModel(m)} aria-pressed={aiModel === m}>{m}</button>
-              ))}
-            </div>
-            <p className="settings-hint">
-              <strong>gpt-4o-mini</strong> — fastest, lowest cost ·{" "}
-              <strong>gpt-4o</strong> — highest quality reasoning
-            </p>
-          </div>
-
-          <div className="settings-divider" />
 
           <div className="settings-section">
             <div className="settings-title">Behaviour</div>
