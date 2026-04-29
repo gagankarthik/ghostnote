@@ -6,26 +6,80 @@ import { TranscriptSegment, ChatMessage, AIMode, AIModel, Toast, MeetingRecord, 
 import {
   IconMic, IconSquare, IconZap, IconMonitor, IconFileText,
   IconSettings, IconMinus, IconX, IconCopy, IconArrowLeft,
-  IconTrash, IconGhost,
+  IconTrash, IconGhost, IconChevronDown, IconChevronUp,
 } from "./icons";
 
 let segId   = 0;
 let msgId   = 0;
 let toastId = 0;
 
-function SimpleMarkdown({ text, className }: { text: string; className?: string }) {
-  return (
-    <div className={className}>
-      {text.split("\n").map((line, i) => {
-        if (line.startsWith("## "))  return <div key={i} className="md-h2">{line.slice(3)}</div>;
-        if (line.startsWith("### ")) return <div key={i} className="md-h3">{line.slice(4)}</div>;
-        if (line.startsWith("- ") || line.startsWith("• "))
-                                     return <div key={i} className="md-bullet">• {line.slice(2)}</div>;
-        if (line.trim() === "")      return <div key={i} className="md-spacer" />;
-        return <div key={i} className="md-p">{line}</div>;
-      })}
-    </div>
-  );
+// ── Markdown renderer ─────────────────────────────────────────────────────────
+
+function renderInline(text: string): React.ReactNode[] {
+  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/);
+  return parts.map((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return <strong key={i}>{part.slice(2, -2)}</strong>;
+    }
+    if (part.startsWith("`") && part.endsWith("`")) {
+      return <code key={i}>{part.slice(1, -1)}</code>;
+    }
+    return part;
+  });
+}
+
+function SimpleMarkdown({ text, streaming }: { text: string; streaming?: boolean }) {
+  const lines = text.split("\n");
+  const elements: React.ReactNode[] = [];
+
+  lines.forEach((line, i) => {
+    const isLast = i === lines.length - 1;
+    if (line.startsWith("## ")) {
+      elements.push(
+        <div key={i} className="md-h2">
+          {renderInline(line.slice(3))}
+          {isLast && streaming && <span className="streaming-cursor" />}
+        </div>
+      );
+    } else if (line.startsWith("### ")) {
+      elements.push(
+        <div key={i} className="md-h3">
+          {renderInline(line.slice(4))}
+          {isLast && streaming && <span className="streaming-cursor" />}
+        </div>
+      );
+    } else if (line.startsWith("- ") || line.startsWith("• ")) {
+      elements.push(
+        <div key={i} className="md-bullet">
+          {renderInline(line.slice(2))}
+          {isLast && streaming && <span className="streaming-cursor" />}
+        </div>
+      );
+    } else if (/^\d+\.\s/.test(line)) {
+      const content = line.replace(/^\d+\.\s/, "");
+      elements.push(
+        <div key={i} className="md-ordered">
+          {renderInline(content)}
+          {isLast && streaming && <span className="streaming-cursor" />}
+        </div>
+      );
+    } else if (line.trim() === "") {
+      elements.push(<div key={i} className="md-spacer" />);
+    } else {
+      elements.push(
+        <div key={i} className="md-p">
+          {renderInline(line)}
+          {isLast && streaming && <span className="streaming-cursor" />}
+        </div>
+      );
+    }
+  });
+
+  if (streaming && text === "") {
+    elements.push(<span key="init-cursor" className="streaming-cursor" />);
+  }
+
+  return <div className="md-content">{elements}</div>;
 }
 
 function fmtTime(s: number) {
@@ -44,40 +98,45 @@ interface Props {
 }
 
 export default function MeetingScreen({ onBack }: Props) {
-  const [isRecording,  setIsRecording]  = useState(false);
-  const [segments,     setSegments]     = useState<TranscriptSegment[]>([]);
-  const [interimText,  setInterimText]  = useState("");
-  const [messages,     setMessages]     = useState<ChatMessage[]>([]);
-  const [aiThinking,   setAiThinking]   = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [toasts,       setToasts]       = useState<Toast[]>([]);
-  const [chatInput,    setChatInput]    = useState("");
-  const [elapsed,      setElapsed]      = useState(0);
-  const [mode,         setMode]         = useState<AIMode>("interview");
-  const [aiModel,      setAiModel]      = useState<AIModel>("gpt-4o-mini");
-  const [useScreen,    setUseScreen]    = useState(false);
-  const [autoAsk,      setAutoAsk]      = useState(false);
-  const [opacity,      setOpacity]      = useState(90);
+  const [isRecording,    setIsRecording]    = useState(false);
+  const [segments,       setSegments]       = useState<TranscriptSegment[]>([]);
+  const [interimText,    setInterimText]    = useState("");
+  const [messages,       setMessages]       = useState<ChatMessage[]>([]);
+  const [aiThinking,     setAiThinking]     = useState(false);
+  const [streamingId,    setStreamingId]    = useState<string | null>(null);
+  const [showSettings,   setShowSettings]   = useState(false);
+  const [toasts,         setToasts]         = useState<Toast[]>([]);
+  const [chatInput,      setChatInput]      = useState("");
+  const [elapsed,        setElapsed]        = useState(0);
+  const [mode,           setMode]           = useState<AIMode>("interview");
+  const [aiModel,        setAiModel]        = useState<AIModel>("gpt-4o-mini");
+  const [useScreen,      setUseScreen]      = useState(false);
+  const [autoAsk,        setAutoAsk]        = useState(false);
+  const [opacity,        setOpacity]        = useState(90);
+  const [transcriptOpen, setTranscriptOpen] = useState(false);
 
-  const meetingStartedAt = useRef(Date.now());
-  const timerRef         = useRef<ReturnType<typeof setInterval> | null>(null);
-  const feedEndRef       = useRef<HTMLDivElement>(null);
+  const meetingStartedAt  = useRef(Date.now());
+  const timerRef          = useRef<ReturnType<typeof setInterval> | null>(null);
+  const feedEndRef        = useRef<HTMLDivElement>(null);
+  const streamingContent  = useRef<string>("");
+  const streamingMsgId    = useRef<string | null>(null);
 
-  const aiThinkingRef = useRef(false);
-  const autoAskRef    = useRef(false);
-  const modeRef       = useRef<AIMode>("interview");
-  const aiModelRef    = useRef<AIModel>("gpt-4o-mini");
-  const useScreenRef  = useRef(false);
-  const segmentsRef   = useRef<TranscriptSegment[]>([]);
-  const messagesRef   = useRef<ChatMessage[]>([]);
+  // Stable refs for async callbacks
+  const aiThinkingRef  = useRef(false);
+  const autoAskRef     = useRef(false);
+  const modeRef        = useRef<AIMode>("interview");
+  const aiModelRef     = useRef<AIModel>("gpt-4o-mini");
+  const useScreenRef   = useRef(false);
+  const segmentsRef    = useRef<TranscriptSegment[]>([]);
+  const messagesRef    = useRef<ChatMessage[]>([]);
 
-  useEffect(() => { aiThinkingRef.current = aiThinking; }, [aiThinking]);
-  useEffect(() => { autoAskRef.current    = autoAsk;    }, [autoAsk]);
-  useEffect(() => { modeRef.current       = mode;       }, [mode]);
-  useEffect(() => { aiModelRef.current    = aiModel;    }, [aiModel]);
-  useEffect(() => { useScreenRef.current  = useScreen;  }, [useScreen]);
-  useEffect(() => { segmentsRef.current   = segments;   }, [segments]);
-  useEffect(() => { messagesRef.current   = messages;   }, [messages]);
+  useEffect(() => { aiThinkingRef.current = aiThinking;     }, [aiThinking]);
+  useEffect(() => { autoAskRef.current    = autoAsk;        }, [autoAsk]);
+  useEffect(() => { modeRef.current       = mode;           }, [mode]);
+  useEffect(() => { aiModelRef.current    = aiModel;        }, [aiModel]);
+  useEffect(() => { useScreenRef.current  = useScreen;      }, [useScreen]);
+  useEffect(() => { segmentsRef.current   = segments;       }, [segments]);
+  useEffect(() => { messagesRef.current   = messages;       }, [messages]);
 
   const addToast = useCallback((message: string, type: Toast["type"] = "error") => {
     const id = String(++toastId);
@@ -85,6 +144,7 @@ export default function MeetingScreen({ onBack }: Props) {
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4500);
   }, []);
 
+  // Timer
   useEffect(() => {
     if (isRecording) {
       setElapsed(0);
@@ -95,22 +155,41 @@ export default function MeetingScreen({ onBack }: Props) {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [isRecording]);
 
+  // ── AI ask (streaming) ────────────────────────────────────────────────────
+
   const handleAskAI = useCallback(async (q: string) => {
     if (aiThinkingRef.current) return;
     aiThinkingRef.current = true;
     setAiThinking(true);
+
     const question = q.trim();
     if (question) {
       setMessages(prev => [...prev, { id: String(++msgId), role: "user", content: question }]);
     }
     setChatInput("");
+
+    // Create the streaming message placeholder
+    const sid = String(++msgId);
+    streamingMsgId.current    = sid;
+    streamingContent.current  = "";
+    setStreamingId(sid);
+    setMessages(prev => [...prev, { id: sid, role: "assistant", content: "", streaming: true }]);
+
     try {
-      const answer = await api.askAi(question, modeRef.current, aiModelRef.current, useScreenRef.current);
-      setMessages(prev => [...prev, { id: String(++msgId), role: "assistant", content: answer }]);
+      await api.askAiStream(question, modeRef.current, aiModelRef.current, useScreenRef.current);
+      // Mark streaming done — content already built via ai-chunk events
+      setMessages(prev =>
+        prev.map(m => m.id === sid ? { ...m, content: streamingContent.current, streaming: false } : m)
+      );
     } catch (e) {
+      // Remove the streaming placeholder and show error
+      setMessages(prev => prev.filter(m => m.id !== sid));
       addToast(String(e));
     } finally {
-      aiThinkingRef.current = false;
+      streamingMsgId.current   = null;
+      streamingContent.current = "";
+      setStreamingId(null);
+      aiThinkingRef.current    = false;
       setAiThinking(false);
     }
   }, [addToast]);
@@ -118,8 +197,11 @@ export default function MeetingScreen({ onBack }: Props) {
   const handleAskAIRef = useRef(handleAskAI);
   useEffect(() => { handleAskAIRef.current = handleAskAI; }, [handleAskAI]);
 
+  // ── Event listeners ───────────────────────────────────────────────────────
+
   useEffect(() => {
     const unsubs = [
+      // Transcript
       listen<{ text: string; is_final: boolean }>("transcript", ({ payload }) => {
         if (payload.is_final) {
           setInterimText("");
@@ -129,10 +211,26 @@ export default function MeetingScreen({ onBack }: Props) {
           setInterimText(payload.text);
         }
       }),
+
+      // Recording state
       listen<boolean>("recording-state", ({ payload }) => setIsRecording(payload)),
-      listen<string> ("recording-error",  ({ payload }) => { setIsRecording(false); addToast(payload); }),
-      listen("hotkey-ask-ai", () => handleAskAIRef.current("")),
-      listen("toggle-visibility", async () => {
+      listen<string>("recording-error",  ({ payload }) => { setIsRecording(false); addToast(payload); }),
+
+      // AI streaming chunks — append to streaming message
+      listen<string>("ai-chunk", ({ payload }) => {
+        const sid = streamingMsgId.current;
+        if (sid) {
+          streamingContent.current += payload;
+          const content = streamingContent.current;
+          setMessages(prev =>
+            prev.map(m => m.id === sid ? { ...m, content } : m)
+          );
+        }
+      }),
+
+      // Hotkeys
+      listen("hotkey-ask-ai",      () => handleAskAIRef.current("")),
+      listen("toggle-visibility",  async () => {
         const win = getCurrentWindow();
         if (await win.isVisible()) await win.hide();
         else { await win.show(); await win.setFocus(); }
@@ -141,9 +239,12 @@ export default function MeetingScreen({ onBack }: Props) {
     return () => { unsubs.forEach(p => p.then(f => f())); };
   }, [addToast]);
 
+  // Auto-scroll
   useEffect(() => {
     feedEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [segments, interimText, messages, aiThinking]);
+
+  // ── Drag ─────────────────────────────────────────────────────────────────
 
   const handleDragStart = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0) return;
@@ -152,6 +253,8 @@ export default function MeetingScreen({ onBack }: Props) {
     getCurrentWindow().startDragging().catch(() => {});
   };
 
+  // ── Recording ────────────────────────────────────────────────────────────
+
   const handleStartRecording = async () => {
     try { await api.startRecording(); setSegments([]); setInterimText(""); }
     catch (e) { addToast(String(e)); }
@@ -159,9 +262,12 @@ export default function MeetingScreen({ onBack }: Props) {
 
   const handleStopRecording = () => { api.stopRecording(); setIsRecording(false); };
 
+  // ── Generate notes ────────────────────────────────────────────────────────
+
   const handleGenerateNotes = async () => {
     if (aiThinking) return;
-    aiThinkingRef.current = true; setAiThinking(true);
+    aiThinkingRef.current = true;
+    setAiThinking(true);
     try {
       const notes = await api.generateNotes(aiModel);
       setMessages(prev => [...prev, { id: String(++msgId), role: "assistant", content: notes }]);
@@ -201,12 +307,20 @@ export default function MeetingScreen({ onBack }: Props) {
     });
   };
 
-  const recentSegs = segments.slice(-30);
+  const recentSegs = segments.slice(-8);
+  const latestText = interimText || (recentSegs.length > 0 ? recentSegs[recentSegs.length - 1].text : "");
   const isEmpty = segments.length === 0 && !interimText && messages.length === 0 && !aiThinking;
+
+  const modeDescriptions: Record<AIMode, string> = {
+    interview: "STAR answers",
+    meeting:   "Key insights",
+    notes:     "Clean bullets",
+  };
 
   return (
     <div className="app" style={{ opacity: opacity / 100 }}>
 
+      {/* ── Toasts ── */}
       {toasts.length > 0 && (
         <div className="toast-stack">
           {toasts.map(t => (
@@ -220,86 +334,130 @@ export default function MeetingScreen({ onBack }: Props) {
         </div>
       )}
 
+      {/* ── Titlebar ── */}
       <div className="titlebar" onPointerDown={handleDragStart} data-tauri-drag-region>
-        <button className="titlebar-btn" onClick={handleEndMeeting} title="End meeting">
-          <IconArrowLeft size={13} />
+        <button className="titlebar-btn" onClick={handleEndMeeting} title="End meeting & save">
+          <IconArrowLeft size={12} />
         </button>
         <div className="logo">
-          <IconGhost size={14} />
+          <IconGhost size={13} />
           <span>Ghostnote</span>
         </div>
+
         {isRecording && (
           <div className="recording-indicator">
             <div className="rec-dot" />
             <span>{fmtTime(elapsed)}</span>
           </div>
         )}
+
         <div className="titlebar-spacer" />
-        <button className="titlebar-btn"
+
+        <button
+          className="titlebar-btn"
           onClick={() => setShowSettings(v => !v)}
-          style={{ color: showSettings ? "#C4B5FD" : undefined }}
+          style={{ color: showSettings ? "var(--accent-text)" : undefined }}
           title={showSettings ? "Close settings" : "Settings"}>
-          {showSettings ? <IconX size={13} /> : <IconSettings size={13} />}
+          {showSettings ? <IconX size={12} /> : <IconSettings size={12} />}
         </button>
         <div className="win-controls">
           <button className="titlebar-btn btn-minimize" title="Minimize"
             onClick={() => getCurrentWindow().minimize().catch(() => {})}>
-            <IconMinus size={12} />
+            <IconMinus size={11} />
           </button>
           <button className="titlebar-btn btn-close" title="Close"
             onClick={() => getCurrentWindow().close().catch(() => {})}>
-            <IconX size={11} />
+            <IconX size={10} />
           </button>
         </div>
       </div>
 
       {!showSettings && (
         <>
+          {/* ── Controls ── */}
           <div className="controls">
             {!isRecording ? (
               <button className="btn btn-record" onClick={handleStartRecording}>
-                <IconMic size={12} /> <span>Record</span>
+                <IconMic size={11} /> <span>Record</span>
               </button>
             ) : (
               <button className="btn btn-stop" onClick={handleStopRecording}>
-                <IconSquare size={11} /> <span>Stop</span>
+                <IconSquare size={10} /> <span>Stop</span>
               </button>
             )}
-            <button className={`btn ${autoAsk ? "btn-auto-on" : "btn-ghost"}`}
-              onClick={() => setAutoAsk(v => !v)} aria-pressed={autoAsk}>
-              <IconZap size={12} /> <span>Auto</span>
+
+            <button
+              className={`btn ${autoAsk ? "btn-auto-on" : "btn-ghost"}`}
+              onClick={() => setAutoAsk(v => !v)}
+              title={autoAsk ? "Auto-ask ON" : "Auto-ask OFF"}
+              aria-pressed={autoAsk}>
+              <IconZap size={11} /> <span>Auto</span>
             </button>
-            <button className={`btn ${useScreen ? "btn-screen-on" : "btn-ghost"}`}
-              onClick={() => setUseScreen(v => !v)} aria-pressed={useScreen}>
-              <IconMonitor size={12} />
+
+            <button
+              className={`btn ${useScreen ? "btn-screen-on" : "btn-ghost"}`}
+              onClick={() => setUseScreen(v => !v)}
+              title={useScreen ? "Screen context ON" : "Include screen"}
+              aria-pressed={useScreen}>
+              <IconMonitor size={11} />
             </button>
+
             {segments.length > 0 && (
-              <button className="btn btn-ghost" onClick={handleGenerateNotes} disabled={aiThinking}>
-                <IconFileText size={12} />
+              <button className="btn btn-ghost" onClick={handleGenerateNotes} disabled={aiThinking}
+                title="Generate meeting notes">
+                <IconFileText size={11} />
               </button>
             )}
+
             <div className="controls-spacer" />
-            <button className="btn btn-ghost" onClick={handleClearSession}>
-              <IconTrash size={12} />
+
+            <span style={{ fontSize: "9px", color: "var(--t4)", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.3px" }}>
+              {mode.toUpperCase()[0]}
+            </span>
+
+            <button className="btn btn-ghost" onClick={handleClearSession} title="Clear session">
+              <IconTrash size={11} />
             </button>
           </div>
 
-          <div className="main-body">
-            <div className="unified-feed" role="log" aria-live="polite">
-              {isEmpty && (
-                <div className="feed-empty">
-                  {isRecording ? "Listening to system audio…" : "Press Record to start capturing audio"}
-                </div>
-              )}
-
-              {(recentSegs.length > 0 || interimText) && (
-                <div className="heard-section">
+          {/* ── Transcript strip ── */}
+          {(recentSegs.length > 0 || interimText) && (
+            <div className={`transcript-strip ${transcriptOpen ? "expanded" : "collapsed"}`}>
+              <div className="transcript-header" onClick={() => setTranscriptOpen(v => !v)}>
+                <span className="transcript-label">Hearing</span>
+                {!transcriptOpen && latestText && (
+                  <span className="transcript-latest">{latestText}</span>
+                )}
+                <button className="transcript-toggle" title={transcriptOpen ? "Collapse" : "Expand"}>
+                  {transcriptOpen ? <IconChevronUp size={10} /> : <IconChevronDown size={10} />}
+                </button>
+              </div>
+              {transcriptOpen && (
+                <div className="transcript-lines">
                   {recentSegs.map(seg => (
-                    <div key={seg.id} className="heard-item">{seg.text}</div>
+                    <div key={seg.id} className="transcript-line">{seg.text}</div>
                   ))}
                   {interimText && (
-                    <div className="heard-item heard-interim">{interimText}</div>
+                    <div className="transcript-line interim">{interimText}</div>
                   )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Chat feed ── */}
+          <div className="main-body">
+            <div className="chat-feed" role="log" aria-live="polite">
+
+              {isEmpty && (
+                <div className="feed-empty">
+                  <div className="feed-empty-icon"><IconGhost size={18} /></div>
+                  <div className="feed-empty-title">Ready to assist</div>
+                  <div className="feed-empty-sub">
+                    {isRecording
+                      ? `Listening in ${mode} mode · ${modeDescriptions[mode]}`
+                      : "Press Record to start capturing audio"}
+                  </div>
                 </div>
               )}
 
@@ -307,33 +465,42 @@ export default function MeetingScreen({ onBack }: Props) {
                 <div key={m.id} className={`chat-msg chat-msg-${m.role}`}>
                   {m.role === "user" ? (
                     <>
-                      <span className="chat-bubble user-bubble">{m.content}</span>
-                      <button className="delete-msg-btn" title="Delete" onClick={() => deleteMessage(m.id)}>
-                        <IconX size={10} />
+                      <span className="user-bubble">{m.content}</span>
+                      <button className="msg-action-btn del" title="Delete"
+                        onClick={() => deleteMessage(m.id)}>
+                        <IconX size={9} />
                       </button>
                     </>
                   ) : (
                     <>
-                      <div className="ai-avatar"><IconGhost size={11} /></div>
-                      <SimpleMarkdown text={m.content} className="chat-bubble ai-bubble" />
-                      <div className="msg-actions">
-                        <button className="copy-msg-btn"
-                          onClick={() => copyText(m.content).then(ok => ok && addToast("Copied", "success"))}>
-                          <IconCopy size={11} />
-                        </button>
-                        <button className="delete-msg-btn" title="Delete" onClick={() => deleteMessage(m.id)}>
-                          <IconX size={10} />
-                        </button>
-                      </div>
+                      <div className="ai-avatar"><IconGhost size={10} /></div>
+                      <SimpleMarkdown
+                        text={m.content}
+                        streaming={m.streaming && m.id === streamingId}
+                        key={m.id}
+                      />
+                      {!m.streaming && (
+                        <div className="msg-actions">
+                          <button className="msg-action-btn"
+                            onClick={() => copyText(m.content).then(ok => ok && addToast("Copied", "success"))}
+                            title="Copy">
+                            <IconCopy size={10} />
+                          </button>
+                          <button className="msg-action-btn del" title="Delete"
+                            onClick={() => deleteMessage(m.id)}>
+                            <IconX size={9} />
+                          </button>
+                        </div>
+                      )}
                     </>
                   )}
                 </div>
               ))}
 
-              {aiThinking && (
-                <div className="chat-msg chat-msg-assistant">
-                  <div className="ai-avatar"><IconGhost size={11} /></div>
-                  <div className="chat-bubble ai-bubble thinking-bubble">
+              {aiThinking && !streamingId && (
+                <div className="thinking-row">
+                  <div className="ai-avatar"><IconGhost size={10} /></div>
+                  <div className="thinking-dots">
                     <span className="dot" /><span className="dot" /><span className="dot" />
                   </div>
                 </div>
@@ -342,101 +509,131 @@ export default function MeetingScreen({ onBack }: Props) {
               <div ref={feedEndRef} />
             </div>
 
+            {/* ── Quick actions ── */}
             {!autoAsk && (
               <div className="quick-actions">
-                <button className="quick-btn" onClick={() => handleAskAI("")}
-                  disabled={aiThinking}>
+                <button className="quick-btn" onClick={() => handleAskAI("")} disabled={aiThinking}>
+                  <span className="quick-btn-icon"><IconZap size={9} /></span>
                   Assist
                 </button>
-                <button className="quick-btn" onClick={() => handleAskAI("What should I say next?")}
+                <button className="quick-btn"
+                  onClick={() => handleAskAI("What should I say next?")}
                   disabled={aiThinking}>
-                  What should I say?
+                  What to say?
                 </button>
-                <button className="quick-btn" onClick={() => handleAskAI("What are good follow-up questions to ask?")}
+                <button className="quick-btn"
+                  onClick={() => handleAskAI("What are smart follow-up questions to ask right now?")}
                   disabled={aiThinking}>
-                  Follow-up questions
+                  Follow-ups
+                </button>
+                <button className="quick-btn"
+                  onClick={() => handleAskAI("Summarize what was said so far in 2-3 bullet points")}
+                  disabled={aiThinking}>
+                  Summarize
                 </button>
               </div>
             )}
 
+            {/* ── Input ── */}
             <div className="chat-input-row">
               <input
                 className="chat-input"
-                placeholder={aiThinking ? "Thinking…" : "Ask about the conversation…"}
+                placeholder={aiThinking ? "Thinking…" : "Ask anything about the conversation…"}
                 value={chatInput}
                 onChange={e => setChatInput(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
                 disabled={aiThinking}
               />
-              <button className="send-btn" onClick={handleSend} disabled={aiThinking || !chatInput.trim()}>
-                {aiThinking ? <span className="spinner" /> : <IconZap size={13} />}
+              <button className="send-btn" onClick={handleSend}
+                disabled={aiThinking || !chatInput.trim()}
+                title="Send (Enter)">
+                {aiThinking && !streamingId
+                  ? <span className="spinner" />
+                  : <IconZap size={12} />}
               </button>
             </div>
           </div>
         </>
       )}
 
+      {/* ── Settings ── */}
       {showSettings && (
         <div className="settings-view">
+
           <div className="settings-section">
             <div className="settings-title">Mode</div>
-            <div className="mode-picker">
+            <div className="segmented-picker">
               {(["interview", "meeting", "notes"] as AIMode[]).map(m => (
                 <button key={m}
-                  className={`mode-btn${mode === m ? " active" : ""}`}
-                  onClick={() => setMode(m as AIMode)}
+                  className={`seg-btn${mode === m ? " active" : ""}`}
+                  onClick={() => setMode(m)}
                   aria-pressed={mode === m}>
                   {m.charAt(0).toUpperCase() + m.slice(1)}
                 </button>
               ))}
             </div>
             <p className="settings-hint">
-              <strong>Interview</strong> — STAR answers · <strong>Meeting</strong> — insights · <strong>Notes</strong> — bullets
+              <strong>Interview</strong> — STAR method answers &amp; coaching ·{" "}
+              <strong>Meeting</strong> — insights &amp; action items ·{" "}
+              <strong>Notes</strong> — bullet point extraction
             </p>
           </div>
-          <div className="ai-divider" />
+
+          <div className="settings-divider" />
+
           <div className="settings-section">
             <div className="settings-title">AI Model</div>
-            <div className="model-picker">
+            <div className="segmented-picker">
               {(["gpt-4o-mini", "gpt-4o"] as AIModel[]).map(m => (
-                <button key={m} className={`model-btn${aiModel === m ? " active" : ""}`}
+                <button key={m} className={`seg-btn mono${aiModel === m ? " active" : ""}`}
                   onClick={() => setAiModel(m)} aria-pressed={aiModel === m}>{m}</button>
               ))}
             </div>
             <p className="settings-hint">
-              <strong>gpt-4o-mini</strong> — fast &amp; cheap · <strong>gpt-4o</strong> — highest quality
+              <strong>gpt-4o-mini</strong> — fastest, lowest cost ·{" "}
+              <strong>gpt-4o</strong> — highest quality reasoning
             </p>
           </div>
-          <div className="ai-divider" />
+
+          <div className="settings-divider" />
+
           <div className="settings-section">
             <div className="settings-title">Behaviour</div>
             <label className="toggle-row">
               <input type="checkbox" checked={autoAsk} onChange={e => setAutoAsk(e.target.checked)}
-                style={{ accentColor: "#14B8A6" }} />
-              <span>Auto-ask AI after each utterance</span>
+                style={{ accentColor: "var(--accent)" }} />
+              <span>Auto-ask after each utterance</span>
             </label>
-            <p className="settings-hint">AI responds automatically as each sentence completes.</p>
+            <p className="settings-hint">AI responds automatically as each sentence finishes transcribing.</p>
             <label className="form-label" htmlFor="opacity-range">Overlay opacity — {opacity}%</label>
             <input id="opacity-range" type="range" min={30} max={100} value={opacity}
               onChange={e => setOpacity(Number(e.target.value))} className="opacity-slider" />
           </div>
-          <div className="ai-divider" />
+
+          <div className="settings-divider" />
+
           <div className="settings-section">
             <div className="settings-title">Keyboard Shortcuts</div>
             <div className="shortcuts-list">
               <div className="shortcut-row"><span>Ask AI instantly</span><kbd className="kbd">Ctrl+Enter</kbd></div>
               <div className="shortcut-row"><span>Show / Hide overlay</span><kbd className="kbd">Ctrl+Shift+H</kbd></div>
+              <div className="shortcut-row"><span>Send message</span><kbd className="kbd">Enter</kbd></div>
             </div>
           </div>
-          <div className="ai-divider" />
+
+          <div className="settings-divider" />
+
           <div className="settings-section">
             <div className="settings-title">Privacy</div>
-            <p className="settings-hint" style={{ lineHeight: 1.8 }}>
-              Uses <code>WDA_EXCLUDEFROMCAPTURE</code> — invisible to Zoom, Teams, OBS, and any
-              screen-capture API. Audio is captured via WASAPI loopback and streamed to Deepgram
-              over an encrypted WebSocket.
+            <p className="settings-hint" style={{ lineHeight: 1.75 }}>
+              Overlay is hidden from screen capture using Windows{" "}
+              <code>WDA_EXCLUDEFROMCAPTURE</code> — invisible to Zoom, Teams, Meet,
+              OBS, and any screen-recording API. Audio is captured via WASAPI loopback
+              (system audio only) and streamed to Deepgram over an encrypted WebSocket.
+              Nothing is stored locally beyond this session.
             </p>
           </div>
+
         </div>
       )}
     </div>

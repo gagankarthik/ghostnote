@@ -162,6 +162,7 @@ pub fn run() {
             commands::start_recording,
             commands::stop_recording,
             commands::ask_ai,
+            commands::ask_ai_stream,
             commands::generate_notes,
             commands::get_transcript,
             commands::clear_session,

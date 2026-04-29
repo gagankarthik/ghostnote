@@ -1,21 +1,35 @@
 import { useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { AuthUser, MeetingRecord } from "./types";
-import { IconGhost, IconSettings, IconMinus, IconX, IconArrowLeft, IconTrash } from "./icons";
+import { IconGhost, IconSettings, IconMinus, IconX, IconArrowLeft, IconTrash, IconMic } from "./icons";
 
 function fmtDate(ts: number) {
-  return new Date(ts).toLocaleDateString(undefined, {
-    weekday: "short", month: "short", day: "numeric",
-  });
+  const d = new Date(ts);
+  const now = new Date();
+  const isToday = d.toDateString() === now.toDateString();
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const isYesterday = d.toDateString() === yesterday.toDateString();
+
+  if (isToday)     return "Today · " + d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  if (isYesterday) return "Yesterday · " + d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+
+  return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 }
 
 function fmtDuration(startedAt: number, endedAt: number) {
   const s = Math.round((endedAt - startedAt) / 1000);
-  const m = Math.floor(s / 60);
-  return m > 0 ? `${m}m ${s % 60}s` : `${s}s`;
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m ${sec}s`;
+  return `${sec}s`;
 }
 
 function initials(email: string) {
+  const parts = email.split("@")[0].split(/[._-]/);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
   return email.slice(0, 2).toUpperCase();
 }
 
@@ -37,6 +51,8 @@ export default function HistoryScreen({ user, meetings, onStartMeeting, onSignOu
     getCurrentWindow().startDragging().catch(() => {});
   };
 
+  const totalWords = meetings.reduce((sum, m) => sum + m.wordCount, 0);
+
   return (
     <div className="app">
       <div className="titlebar" onPointerDown={handleDragStart} data-tauri-drag-region>
@@ -50,16 +66,16 @@ export default function HistoryScreen({ user, meetings, onStartMeeting, onSignOu
           onClick={() => setShowSettings(v => !v)}
           style={{ color: showSettings ? "var(--accent-text)" : undefined }}
           title={showSettings ? "Back" : "Settings"}>
-          {showSettings ? <IconArrowLeft size={13} /> : <IconSettings size={13} />}
+          {showSettings ? <IconArrowLeft size={12} /> : <IconSettings size={12} />}
         </button>
         <div className="win-controls">
           <button className="titlebar-btn btn-minimize" title="Minimize"
             onClick={() => getCurrentWindow().minimize().catch(() => {})}>
-            <IconMinus size={12} />
+            <IconMinus size={11} />
           </button>
           <button className="titlebar-btn btn-close" title="Close"
             onClick={() => getCurrentWindow().close().catch(() => {})}>
-            <IconX size={11} />
+            <IconX size={10} />
           </button>
         </div>
       </div>
@@ -73,7 +89,8 @@ export default function HistoryScreen({ user, meetings, onStartMeeting, onSignOu
               <div className="history-user-info">
                 <div className="history-user-email">{user.email}</div>
                 <div className="history-session-count">
-                  {meetings.length} session{meetings.length !== 1 ? "s" : ""}
+                  {meetings.length} session{meetings.length !== 1 ? "s" : ""} ·{" "}
+                  {totalWords.toLocaleString()} words captured
                 </div>
               </div>
             </div>
@@ -84,17 +101,29 @@ export default function HistoryScreen({ user, meetings, onStartMeeting, onSignOu
               Sign Out
             </button>
           </div>
+
+          <div className="settings-divider" />
+
+          <div className="settings-section">
+            <div className="settings-title">About</div>
+            <p className="settings-hint" style={{ lineHeight: 1.75 }}>
+              Ghostnote uses real-time audio transcription and AI to give you
+              instant, contextual assistance during interviews and meetings —
+              completely invisible to screen capture software.
+            </p>
+          </div>
         </div>
       ) : (
         <div className="history-body">
 
-          {/* ── User greeting ── */}
+          {/* ── User header ── */}
           <div className="history-user-row">
             <div className="history-user-avatar">{initials(user.email)}</div>
             <div className="history-user-info">
               <div className="history-user-email">{user.email}</div>
               <div className="history-session-count">
                 {meetings.length} session{meetings.length !== 1 ? "s" : ""}
+                {totalWords > 0 && ` · ${totalWords.toLocaleString()}w captured`}
               </div>
             </div>
           </div>
@@ -102,18 +131,20 @@ export default function HistoryScreen({ user, meetings, onStartMeeting, onSignOu
           {/* ── CTA ── */}
           <div className="start-meeting-section">
             <button className="btn-start-meeting" onClick={onStartMeeting}>
-              + Start New Meeting
+              <IconMic size={14} />
+              Start New Meeting
             </button>
           </div>
 
-          {/* ── Past sessions ── */}
+          {/* ── Sessions ── */}
           {meetings.length > 0 && (
-            <div className="history-section-label">Past Sessions</div>
+            <div className="history-section-label">Recent Sessions</div>
           )}
 
           {meetings.length === 0 ? (
             <div className="history-empty">
-              No sessions yet.<br />Start your first meeting above.
+              No sessions yet.<br />
+              Start your first meeting above.
             </div>
           ) : (
             <div className="history-list">
@@ -126,7 +157,7 @@ export default function HistoryScreen({ user, meetings, onStartMeeting, onSignOu
                       className="history-delete-btn"
                       title="Delete session"
                       onClick={() => onDeleteMeeting(m.id)}>
-                      <IconTrash size={11} />
+                      <IconTrash size={10} />
                     </button>
                   </div>
                   {m.preview && (
@@ -134,7 +165,7 @@ export default function HistoryScreen({ user, meetings, onStartMeeting, onSignOu
                   )}
                   <div className="history-stats">
                     {m.wordCount.toLocaleString()}w
-                    {m.questionCount > 0 && ` · ${m.questionCount} question${m.questionCount !== 1 ? "s" : ""}`}
+                    {m.questionCount > 0 && ` · ${m.questionCount} Q${m.questionCount !== 1 ? "s" : ""}`}
                   </div>
                 </div>
               ))}

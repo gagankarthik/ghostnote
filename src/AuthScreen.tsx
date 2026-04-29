@@ -54,10 +54,16 @@ export default function AuthScreen({ onAuth }: Props) {
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key !== "Enter" || loading) return;
-    if (step === "verify")        handleVerify();
-    else if (tab === "signin")    handleSignIn();
-    else                          handleSignUp();
+    if (step === "verify")     handleVerify();
+    else if (tab === "signin") handleSignIn();
+    else                       handleSignUp();
   };
+
+  const canSubmit = step === "verify"
+    ? !!code
+    : tab === "signin"
+      ? !!email && !!password
+      : !!email && !!password && !!name;
 
   return (
     <div className="app">
@@ -70,11 +76,11 @@ export default function AuthScreen({ onAuth }: Props) {
         <div className="win-controls">
           <button className="titlebar-btn btn-minimize" title="Minimize"
             onClick={() => getCurrentWindow().minimize().catch(() => {})}>
-            <IconMinus size={12} />
+            <IconMinus size={11} />
           </button>
           <button className="titlebar-btn btn-close" title="Close"
             onClick={() => getCurrentWindow().close().catch(() => {})}>
-            <IconX size={11} />
+            <IconX size={10} />
           </button>
         </div>
       </div>
@@ -84,15 +90,15 @@ export default function AuthScreen({ onAuth }: Props) {
         {/* ── Brand ── */}
         <div className="auth-brand">
           <div className="auth-brand-icon">
-            <IconGhost size={26} />
+            <IconGhost size={24} />
           </div>
           <h1 className="auth-brand-name">Ghostnote</h1>
           <p className="auth-brand-tagline">
-            Invisible AI assistant for interviews &amp; meetings
+            Invisible AI for interviews &amp; meetings
           </p>
         </div>
 
-        {/* ── Form ── */}
+        {/* ── Verify step ── */}
         {step === "verify" ? (
           <div className="auth-card">
             <div className="auth-card-title">Check your inbox</div>
@@ -107,6 +113,7 @@ export default function AuthScreen({ onAuth }: Props) {
               onKeyDown={handleKeyDown}
               maxLength={8}
               autoFocus
+              autoComplete="one-time-code"
             />
             {error && <div className="auth-error">{error}</div>}
             <button className="btn-auth" onClick={handleVerify} disabled={loading || !code}>
@@ -140,6 +147,7 @@ export default function AuthScreen({ onAuth }: Props) {
                 onChange={e => setName(e.target.value)}
                 onKeyDown={handleKeyDown}
                 autoComplete="name"
+                autoFocus
               />
             )}
             <input
@@ -150,6 +158,7 @@ export default function AuthScreen({ onAuth }: Props) {
               onChange={e => setEmail(e.target.value)}
               onKeyDown={handleKeyDown}
               autoComplete="email"
+              autoFocus={tab === "signin"}
             />
             <input
               className="auth-input"
@@ -166,7 +175,7 @@ export default function AuthScreen({ onAuth }: Props) {
             <button
               className="btn-auth"
               onClick={tab === "signin" ? handleSignIn : handleSignUp}
-              disabled={loading || !email || !password || (tab === "signup" && !name)}
+              disabled={loading || !canSubmit}
             >
               {loading
                 ? <span className="spinner" />

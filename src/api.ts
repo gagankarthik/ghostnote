@@ -5,6 +5,11 @@ export const api = {
   startRecording:    () => invoke<void>("start_recording"),
   stopRecording:     () => invoke<void>("stop_recording"),
 
+  // Streaming AI (primary) — emits "ai-chunk" events, resolves with full text
+  askAiStream: (question: string, mode: string, model: string, useScreen: boolean) =>
+    invoke<string>("ask_ai_stream", { question, mode, model, useScreen }),
+
+  // Non-streaming fallback
   askAi: (question: string, mode: string, model: string, useScreen: boolean) =>
     invoke<string>("ask_ai", { question, mode, model, useScreen }),
 

@@ -80,7 +80,7 @@ pub fn stop_recording(state: State<AppState>) {
     state.is_recording.store(false, Ordering::Relaxed);
 }
 
-// ── AI ────────────────────────────────────────────────────────────────────────
+// ── AI (non-streaming, legacy) ────────────────────────────────────────────────
 
 #[tauri::command]
 pub async fn ask_ai(
@@ -98,8 +98,8 @@ pub async fn ask_ai(
 
     let transcript = {
         let buf = state.transcript_buffer.lock().unwrap();
-        let start = buf.len().saturating_sub(15);
-        buf[start..].join(" ")
+        let start = buf.len().saturating_sub(20);
+        buf[start..].join("\n")
     };
 
     if transcript.is_empty() {
@@ -136,10 +136,16 @@ pub async fn ask_ai(
     }
 }
 
+// ── AI (streaming — primary path) ────────────────────────────────────────────
+
 #[tauri::command]
-pub async fn generate_notes(
+pub async fn ask_ai_stream(
+    question: String,
+    mode: String,
     model: String,
+    use_screen: bool,
     state: State<'_, AppState>,
+    app: AppHandle,
 ) -> Result<String, String> {
     let key = state.openai_key.lock().unwrap().clone();
     if key.is_empty() {
@@ -148,7 +154,69 @@ pub async fn generate_notes(
 
     let transcript = {
         let buf = state.transcript_buffer.lock().unwrap();
-        buf.join(" ")
+        let start = buf.len().saturating_sub(20);
+        buf[start..].join("\n")
+    };
+
+    if transcript.is_empty() {
+        return Err("No transcript yet — start recording first.".into());
+    }
+
+    let screenshot = if use_screen {
+        match crate::screenshot::capture_screenshot_base64() {
+            Ok(img) => Some(img),
+            Err(e) => {
+                eprintln!("[screenshot] {e}");
+                None
+            }
+        }
+    } else {
+        None
+    };
+
+    let app_clone = app.clone();
+    let client = OpenAIClient::new(key);
+
+    let result = client
+        .ask_with_mode_stream(
+            &transcript,
+            &question,
+            &mode,
+            &model,
+            screenshot.as_deref(),
+            move |token| {
+                let _ = app_clone.emit("ai-chunk", &token);
+            },
+        )
+        .await;
+
+    match result {
+        Ok(full_text) => {
+            let _ = app.emit("ai-stream-done", ());
+            Ok(full_text)
+        }
+        Err(e) => {
+            let _ = app.emit("ai-stream-error", &e);
+            Err(e)
+        }
+    }
+}
+
+// ── Notes ─────────────────────────────────────────────────────────────────────
+
+#[tauri::command]
+pub async fn generate_notes(
+    model: String,
+    state: State<'_, AppState>,
+) -> Result<String, String> {
+    let key = state.openai_key.lock().unwrap().clone();
+    if key.is_empty() {
+        return Err("OpenAI API key not configured.".into());
+    }
+
+    let transcript = {
+        let buf = state.transcript_buffer.lock().unwrap();
+        buf.join("\n")
     };
 
     if transcript.is_empty() {
