@@ -100,7 +100,9 @@ pub async fn ask_ai_stream(
         buf[start..].join("\n")
     };
 
-    if transcript.is_empty() {
+    // Only block when the question is empty (auto-assist mode) and there's no transcript.
+    // When the user types a direct question, pass the transcript as context but don't require it.
+    if transcript.is_empty() && question.trim().is_empty() {
         return Err("No transcript yet — start recording first.".into());
     }
 

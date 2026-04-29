@@ -59,6 +59,11 @@ export default function AuthScreen({ onAuth }: Props) {
     else                       handleSignUp();
   };
 
+  const switchTab = (next: Tab) => {
+    setTab(next);
+    setError("");
+  };
+
   const canSubmit = step === "verify"
     ? !!code
     : tab === "signin"
@@ -67,6 +72,7 @@ export default function AuthScreen({ onAuth }: Props) {
 
   return (
     <div className="app">
+      {/* ── Titlebar ── */}
       <div className="titlebar auth-titlebar" onPointerDown={handleDragStart} data-tauri-drag-region>
         <div className="logo">
           <IconGhost size={13} />
@@ -90,12 +96,10 @@ export default function AuthScreen({ onAuth }: Props) {
         {/* ── Brand ── */}
         <div className="auth-brand">
           <div className="auth-brand-icon">
-            <IconGhost size={24} />
+            <IconGhost size={28} />
           </div>
           <h1 className="auth-brand-name">Ghostnote</h1>
-          <p className="auth-brand-tagline">
-            Invisible AI for your meetings
-          </p>
+          <p className="auth-brand-tagline">Invisible AI for your meetings</p>
         </div>
 
         {/* ── Verify step ── */}
@@ -105,78 +109,101 @@ export default function AuthScreen({ onAuth }: Props) {
             <p className="auth-hint">
               Verification code sent to <strong>{email}</strong>
             </p>
-            <input
-              className="auth-input"
-              placeholder="6-digit code"
-              value={code}
-              onChange={e => setCode(e.target.value)}
-              onKeyDown={handleKeyDown}
-              maxLength={8}
-              autoFocus
-              autoComplete="one-time-code"
-            />
+
+            <div className="auth-field">
+              <label className="auth-field-label" htmlFor="verify-code">Verification code</label>
+              <input
+                id="verify-code"
+                className="auth-input"
+                placeholder="6-digit code"
+                value={code}
+                onChange={e => setCode(e.target.value)}
+                onKeyDown={handleKeyDown}
+                maxLength={8}
+                autoFocus
+                autoComplete="one-time-code"
+              />
+            </div>
+
             {error && <div className="auth-error">{error}</div>}
+
             <button className="btn-auth" onClick={handleVerify} disabled={loading || !code}>
               {loading ? <span className="spinner" /> : "Verify & Continue"}
             </button>
+
             <button className="auth-link" onClick={() => { setStep("form"); setError(""); }}>
-              ← Back
+              ← Back to sign in
             </button>
           </div>
         ) : (
           <div className="auth-card">
+            {/* ── Tabs ── */}
             <div className="auth-tabs">
               <button
                 className={`auth-tab${tab === "signin" ? " active" : ""}`}
-                onClick={() => { setTab("signin"); setError(""); }}>
+                onClick={() => switchTab("signin")}>
                 Sign In
               </button>
               <button
                 className={`auth-tab${tab === "signup" ? " active" : ""}`}
-                onClick={() => { setTab("signup"); setError(""); }}>
+                onClick={() => switchTab("signup")}>
                 Create Account
               </button>
             </div>
 
+            {/* ── Fields ── */}
             {tab === "signup" && (
-              <input
-                className="auth-input"
-                type="text"
-                placeholder="Full name"
-                value={name}
-                onChange={e => setName(e.target.value)}
-                onKeyDown={handleKeyDown}
-                autoComplete="name"
-                autoFocus
-              />
+              <div className="auth-field">
+                <label className="auth-field-label" htmlFor="auth-name">Full name</label>
+                <input
+                  id="auth-name"
+                  className="auth-input"
+                  type="text"
+                  placeholder="Jane Smith"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  autoComplete="name"
+                  autoFocus
+                />
+              </div>
             )}
-            <input
-              className="auth-input"
-              type="email"
-              placeholder="Email address"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              onKeyDown={handleKeyDown}
-              autoComplete="email"
-              autoFocus={tab === "signin"}
-            />
-            <input
-              className="auth-input"
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              onKeyDown={handleKeyDown}
-              autoComplete={tab === "signin" ? "current-password" : "new-password"}
-            />
+
+            <div className="auth-field">
+              <label className="auth-field-label" htmlFor="auth-email">Email address</label>
+              <input
+                id="auth-email"
+                className="auth-input"
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                onKeyDown={handleKeyDown}
+                autoComplete="email"
+                autoFocus={tab === "signin"}
+              />
+            </div>
+
+            <div className="auth-field">
+              <label className="auth-field-label" htmlFor="auth-password">Password</label>
+              <input
+                id="auth-password"
+                className="auth-input"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                onKeyDown={handleKeyDown}
+                autoComplete={tab === "signin" ? "current-password" : "new-password"}
+              />
+            </div>
 
             {error && <div className="auth-error">{error}</div>}
 
             <button
               className="btn-auth"
               onClick={tab === "signin" ? handleSignIn : handleSignUp}
-              disabled={loading || !canSubmit}
-            >
+              disabled={loading || !canSubmit}>
               {loading
                 ? <span className="spinner" />
                 : tab === "signin" ? "Sign In" : "Create Account"}

@@ -84,8 +84,8 @@ function SimpleMarkdown({ text, streaming }: { text: string; streaming?: boolean
 
 function fmtTime(s: number) {
   const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
-  if (h > 0) return `${h}:${String(m).padStart(2,"0")}:${String(sec).padStart(2,"0")}`;
-  return `${String(m).padStart(2,"0")}:${String(sec).padStart(2,"0")}`;
+  if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+  return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
 }
 
 async function copyText(text: string) {
@@ -95,6 +95,15 @@ async function copyText(text: string) {
 interface Props {
   user: AuthUser;
   onBack: (record: MeetingRecord) => void;
+}
+
+// Stable mutable state container — avoids multiple separate ref-sync effects.
+interface StableRefs {
+  aiThinking:  boolean;
+  autoAsk:     boolean;
+  useScreen:   boolean;
+  segments:    TranscriptSegment[];
+  messages:    ChatMessage[];
 }
 
 export default function MeetingScreen({ onBack }: Props) {
@@ -113,24 +122,27 @@ export default function MeetingScreen({ onBack }: Props) {
   const [opacity,        setOpacity]        = useState(90);
   const [transcriptOpen, setTranscriptOpen] = useState(false);
 
-  const meetingStartedAt  = useRef(Date.now());
-  const timerRef          = useRef<ReturnType<typeof setInterval> | null>(null);
-  const feedEndRef        = useRef<HTMLDivElement>(null);
-  const streamingContent  = useRef<string>("");
-  const streamingMsgId    = useRef<string | null>(null);
+  const meetingStartedAt = useRef(Date.now());
+  const timerRef         = useRef<ReturnType<typeof setInterval> | null>(null);
+  const feedEndRef       = useRef<HTMLDivElement>(null);
+  const streamingContent = useRef<string>("");
+  const streamingMsgId   = useRef<string | null>(null);
 
-  // Stable refs for async callbacks
-  const aiThinkingRef  = useRef(false);
-  const autoAskRef     = useRef(false);
-  const useScreenRef   = useRef(false);
-  const segmentsRef    = useRef<TranscriptSegment[]>([]);
-  const messagesRef    = useRef<ChatMessage[]>([]);
-
-  useEffect(() => { aiThinkingRef.current = aiThinking;  }, [aiThinking]);
-  useEffect(() => { autoAskRef.current    = autoAsk;     }, [autoAsk]);
-  useEffect(() => { useScreenRef.current  = useScreen;   }, [useScreen]);
-  useEffect(() => { segmentsRef.current   = segments;    }, [segments]);
-  useEffect(() => { messagesRef.current   = messages;    }, [messages]);
+  // Single stable container for all values needed inside async/event callbacks.
+  // Avoids multiple useEffect ref-sync patterns.
+  const stable = useRef<StableRefs>({
+    aiThinking: false,
+    autoAsk:    false,
+    useScreen:  false,
+    segments:   [],
+    messages:   [],
+  });
+  // Keep the container in sync on every render.
+  stable.current.aiThinking = aiThinking;
+  stable.current.autoAsk    = autoAsk;
+  stable.current.useScreen  = useScreen;
+  stable.current.segments   = segments;
+  stable.current.messages   = messages;
 
   const addToast = useCallback((message: string, type: Toast["type"] = "error") => {
     const id = String(++toastId);
@@ -138,7 +150,8 @@ export default function MeetingScreen({ onBack }: Props) {
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4500);
   }, []);
 
-  // Timer
+  // ── Timer ────────────────────────────────────────────────────────────────
+
   useEffect(() => {
     if (isRecording) {
       setElapsed(0);
@@ -151,9 +164,11 @@ export default function MeetingScreen({ onBack }: Props) {
 
   // ── AI ask (streaming) ────────────────────────────────────────────────────
 
+  // Stored in a ref so event-listener closures always call the latest version
+  // without needing to re-subscribe listeners on every dependency change.
   const handleAskAI = useCallback(async (q: string) => {
-    if (aiThinkingRef.current) return;
-    aiThinkingRef.current = true;
+    if (stable.current.aiThinking) return;
+    stable.current.aiThinking = true;
     setAiThinking(true);
 
     const question = q.trim();
@@ -163,13 +178,13 @@ export default function MeetingScreen({ onBack }: Props) {
     setChatInput("");
 
     const sid = String(++msgId);
-    streamingMsgId.current    = sid;
-    streamingContent.current  = "";
+    streamingMsgId.current   = sid;
+    streamingContent.current = "";
     setStreamingId(sid);
     setMessages(prev => [...prev, { id: sid, role: "assistant", content: "", streaming: true }]);
 
     try {
-      await api.askAiStream(question, useScreenRef.current);
+      await api.askAiStream(question, stable.current.useScreen);
       setMessages(prev =>
         prev.map(m => m.id === sid ? { ...m, content: streamingContent.current, streaming: false } : m)
       );
@@ -180,13 +195,16 @@ export default function MeetingScreen({ onBack }: Props) {
       streamingMsgId.current   = null;
       streamingContent.current = "";
       setStreamingId(null);
-      aiThinkingRef.current    = false;
+      stable.current.aiThinking = false;
       setAiThinking(false);
     }
   }, [addToast]);
 
+  // Keep a ref so event listeners always invoke the latest callback
+  // without re-subscribing. This is the canonical pattern for stable
+  // callbacks in long-lived useEffect subscriptions.
   const handleAskAIRef = useRef(handleAskAI);
-  useEffect(() => { handleAskAIRef.current = handleAskAI; }, [handleAskAI]);
+  handleAskAIRef.current = handleAskAI;
 
   // ── Event listeners ───────────────────────────────────────────────────────
 
@@ -195,8 +213,13 @@ export default function MeetingScreen({ onBack }: Props) {
       listen<{ text: string; is_final: boolean }>("transcript", ({ payload }) => {
         if (payload.is_final) {
           setInterimText("");
-          setSegments(prev => [...prev, { id: String(++segId), text: payload.text, timestamp: Date.now() }]);
-          if (autoAskRef.current && !aiThinkingRef.current) handleAskAIRef.current("");
+          setSegments(prev => [
+            ...prev,
+            { id: String(++segId), text: payload.text, timestamp: Date.now() },
+          ]);
+          if (stable.current.autoAsk && !stable.current.aiThinking) {
+            handleAskAIRef.current("");
+          }
         } else {
           setInterimText(payload.text);
         }
@@ -216,17 +239,23 @@ export default function MeetingScreen({ onBack }: Props) {
         }
       }),
 
-      listen("hotkey-ask-ai",      () => handleAskAIRef.current("")),
-      listen("toggle-visibility",  async () => {
+      listen("hotkey-ask-ai",     () => handleAskAIRef.current("")),
+      listen("toggle-visibility", async () => {
         const win = getCurrentWindow();
         if (await win.isVisible()) await win.hide();
         else { await win.show(); await win.setFocus(); }
       }),
     ];
+
+    // Cleanup: each listen() resolves to an unlisten function.
+    // We call them fire-and-forget (no await) because the component is
+    // already unmounting — there is no meaningful error to handle here,
+    // and React's cleanup pattern does not support async cleanup functions.
     return () => { unsubs.forEach(p => p.then(f => f())); };
   }, [addToast]);
 
-  // Auto-scroll
+  // ── Auto-scroll ───────────────────────────────────────────────────────────
+
   useEffect(() => {
     feedEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [segments, interimText, messages, aiThinking]);
@@ -253,13 +282,16 @@ export default function MeetingScreen({ onBack }: Props) {
 
   const handleGenerateNotes = async () => {
     if (aiThinking) return;
-    aiThinkingRef.current = true;
+    stable.current.aiThinking = true;
     setAiThinking(true);
     try {
       const notes = await api.generateNotes();
       setMessages(prev => [...prev, { id: String(++msgId), role: "assistant", content: notes }]);
     } catch (e) { addToast(String(e)); }
-    finally { aiThinkingRef.current = false; setAiThinking(false); }
+    finally {
+      stable.current.aiThinking = false;
+      setAiThinking(false);
+    }
   };
 
   const handleClearSession = () => {
@@ -278,8 +310,8 @@ export default function MeetingScreen({ onBack }: Props) {
 
   const handleEndMeeting = () => {
     if (isRecording) { api.stopRecording(); setIsRecording(false); }
-    const segs = segmentsRef.current;
-    const msgs = messagesRef.current;
+    const segs = stable.current.segments;
+    const msgs = stable.current.messages;
     const wordCount     = segs.reduce((n, s) => n + s.text.split(/\s+/).filter(Boolean).length, 0);
     const questionCount = msgs.filter(m => m.role === "user").length;
     const preview       = segs.slice(0, 3).map(s => s.text).join(" ").slice(0, 100);
@@ -357,38 +389,44 @@ export default function MeetingScreen({ onBack }: Props) {
         <>
           {/* ── Controls ── */}
           <div className="controls">
-            {!isRecording ? (
-              <button className="btn btn-record" onClick={handleStartRecording}>
-                <IconMic size={11} /> <span>Record</span>
-              </button>
-            ) : (
-              <button className="btn btn-stop" onClick={handleStopRecording}>
-                <IconSquare size={10} /> <span>Stop</span>
-              </button>
-            )}
+            {/* Primary action: record / stop */}
+            <div className="controls-group">
+              {!isRecording ? (
+                <button className="btn btn-record" onClick={handleStartRecording}>
+                  <IconMic size={11} /> <span>Record</span>
+                </button>
+              ) : (
+                <button className="btn btn-stop" onClick={handleStopRecording}>
+                  <IconSquare size={10} /> <span>Stop</span>
+                </button>
+              )}
+            </div>
 
-            <button
-              className={`btn ${autoAsk ? "btn-auto-on" : "btn-ghost"}`}
-              onClick={() => setAutoAsk(v => !v)}
-              title={autoAsk ? "Auto-ask ON" : "Auto-ask OFF"}
-              aria-pressed={autoAsk}>
-              <IconZap size={11} /> <span>Auto</span>
-            </button>
-
-            <button
-              className={`btn ${useScreen ? "btn-screen-on" : "btn-ghost"}`}
-              onClick={() => setUseScreen(v => !v)}
-              title={useScreen ? "Screen context ON" : "Include screen"}
-              aria-pressed={useScreen}>
-              <IconMonitor size={11} />
-            </button>
-
-            {segments.length > 0 && (
-              <button className="btn btn-ghost" onClick={handleGenerateNotes} disabled={aiThinking}
-                title="Generate meeting notes">
-                <IconFileText size={11} />
+            {/* Tool buttons: auto, screen, notes */}
+            <div className="controls-tools">
+              <button
+                className={`btn ${autoAsk ? "btn-auto-on" : "btn-ghost"}`}
+                onClick={() => setAutoAsk(v => !v)}
+                title={autoAsk ? "Auto-ask ON — disable" : "Auto-ask OFF — enable"}
+                aria-pressed={autoAsk}>
+                <IconZap size={11} /> <span>Auto</span>
               </button>
-            )}
+
+              <button
+                className={`btn ${useScreen ? "btn-screen-on" : "btn-ghost"}`}
+                onClick={() => setUseScreen(v => !v)}
+                title={useScreen ? "Screen context ON" : "Include screen context"}
+                aria-pressed={useScreen}>
+                <IconMonitor size={11} />
+              </button>
+
+              {segments.length > 0 && (
+                <button className="btn btn-ghost" onClick={handleGenerateNotes} disabled={aiThinking}
+                  title="Generate meeting notes">
+                  <IconFileText size={11} />
+                </button>
+              )}
+            </div>
 
             <div className="controls-spacer" />
 
@@ -401,7 +439,14 @@ export default function MeetingScreen({ onBack }: Props) {
           {(recentSegs.length > 0 || interimText) && (
             <div className={`transcript-strip ${transcriptOpen ? "expanded" : "collapsed"}`}>
               <div className="transcript-header" onClick={() => setTranscriptOpen(v => !v)}>
-                <span className="transcript-label">Hearing</span>
+                {isRecording ? (
+                  <div className="transcript-live-badge">
+                    <div className="transcript-live-dot" />
+                    LIVE
+                  </div>
+                ) : (
+                  <span className="transcript-label">Transcript</span>
+                )}
                 {!transcriptOpen && latestText && (
                   <span className="transcript-latest">{latestText}</span>
                 )}
@@ -428,12 +473,12 @@ export default function MeetingScreen({ onBack }: Props) {
 
               {isEmpty && (
                 <div className="feed-empty">
-                  <div className="feed-empty-icon"><IconGhost size={18} /></div>
+                  <div className="feed-empty-icon"><IconGhost size={20} /></div>
                   <div className="feed-empty-title">Ready to assist</div>
                   <div className="feed-empty-sub">
                     {isRecording
-                      ? "Listening · AI ready to help"
-                      : "Press Record to start capturing audio"}
+                      ? "Listening — ask a question or use Auto mode"
+                      : "Hit Record to start capturing audio, or type a question below"}
                   </div>
                 </div>
               )}
@@ -490,7 +535,6 @@ export default function MeetingScreen({ onBack }: Props) {
             {!autoAsk && (
               <div className="quick-actions">
                 <button className="quick-btn" onClick={() => handleAskAI("")} disabled={aiThinking}>
-                  <span className="quick-btn-icon"><IconZap size={9} /></span>
                   Assist
                 </button>
                 <button className="quick-btn"
@@ -515,7 +559,7 @@ export default function MeetingScreen({ onBack }: Props) {
             <div className="chat-input-row">
               <input
                 className="chat-input"
-                placeholder={aiThinking ? "Thinking…" : "Ask anything about the conversation…"}
+                placeholder={aiThinking ? "Thinking…" : "Ask about the meeting…"}
                 value={chatInput}
                 onChange={e => setChatInput(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
@@ -537,36 +581,52 @@ export default function MeetingScreen({ onBack }: Props) {
       {showSettings && (
         <div className="settings-view">
 
+          {/* Behavior */}
           <div className="settings-section">
-            <div className="settings-title">Behaviour</div>
+            <div className="settings-title">Behavior</div>
             <label className="toggle-row">
               <input type="checkbox" checked={autoAsk} onChange={e => setAutoAsk(e.target.checked)}
                 style={{ accentColor: "var(--accent)" }} />
               <span>Auto-ask after each utterance</span>
             </label>
-            <p className="settings-hint">AI responds automatically as each sentence finishes transcribing.</p>
-            <label className="form-label" htmlFor="opacity-range">Overlay opacity — {opacity}%</label>
+            <p className="settings-hint">
+              AI responds automatically as each sentence finishes transcribing.
+            </p>
+            <label className="form-label" htmlFor="opacity-range">
+              Overlay opacity — {opacity}%
+            </label>
             <input id="opacity-range" type="range" min={30} max={100} value={opacity}
               onChange={e => setOpacity(Number(e.target.value))} className="opacity-slider" />
           </div>
 
           <div className="settings-divider" />
 
+          {/* Shortcuts */}
           <div className="settings-section">
             <div className="settings-title">Keyboard Shortcuts</div>
             <div className="shortcuts-list">
-              <div className="shortcut-row"><span>Ask AI instantly</span><kbd className="kbd">Ctrl+Enter</kbd></div>
-              <div className="shortcut-row"><span>Show / Hide overlay</span><kbd className="kbd">Ctrl+Shift+H</kbd></div>
-              <div className="shortcut-row"><span>Send message</span><kbd className="kbd">Enter</kbd></div>
+              <div className="shortcut-row">
+                <span>Ask AI instantly</span>
+                <kbd className="kbd">Ctrl+Enter</kbd>
+              </div>
+              <div className="shortcut-row">
+                <span>Show / Hide overlay</span>
+                <kbd className="kbd">Ctrl+Shift+H</kbd>
+              </div>
+              <div className="shortcut-row">
+                <span>Send message</span>
+                <kbd className="kbd">Enter</kbd>
+              </div>
             </div>
           </div>
 
           <div className="settings-divider" />
 
+          {/* Privacy */}
           <div className="settings-section">
             <div className="settings-title">Privacy</div>
-            <p className="settings-hint" style={{ lineHeight: 1.75 }}>
-              Overlay is hidden from screen capture using Windows{" "}
+            <p className="settings-hint">
+              The overlay is hidden from screen capture using Windows{" "}
               <code>WDA_EXCLUDEFROMCAPTURE</code> — invisible to Zoom, Teams, Meet,
               OBS, and any screen-recording API. Audio is captured via WASAPI loopback
               (system audio only) and streamed to Deepgram over an encrypted WebSocket.
