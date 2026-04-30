@@ -9,6 +9,7 @@ export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   streaming?: boolean;
+  usedScreen?: boolean;
 }
 
 export interface Toast {

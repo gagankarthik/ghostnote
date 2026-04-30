@@ -267,11 +267,11 @@ export default function HistoryScreen({ user, meetings, onStartMeeting, onSignOu
                 <div className="settings-section-title">Privacy & Security</div>
                 <div className="settings-section-card">
                   <p className="settings-hint">
-                    The overlay is hidden from all screen capture using Windows{" "}
-                    <code>WDA_EXCLUDEFROMCAPTURE</code> — invisible to Zoom, Teams,
-                    Meet, OBS, and every screen-recording API. Audio is captured via
-                    WASAPI loopback (system audio only) and streamed to Deepgram
-                    over an encrypted WebSocket. No audio is stored.
+                    <strong>Completely invisible to screen share.</strong> Ghostnote is fully
+                    hidden from Zoom, Teams, Google Meet, and all other video platforms — your
+                    screen looks completely normal to everyone else. Audio is captured from
+                    your system and processed over an encrypted connection. Nothing is stored
+                    or retained after your session ends.
                   </p>
                 </div>
               </div>
@@ -283,9 +283,8 @@ export default function HistoryScreen({ user, meetings, onStartMeeting, onSignOu
                 <div className="settings-section-title">About</div>
                 <div className="settings-section-card">
                   <p className="settings-hint">
-                    <strong>Ghostnote v1.0</strong> — real-time invisible AI for meetings.<br />
-                    Deepgram nova-2 for live transcription · GPT-4o for suggestions<br />
-                    Built with Tauri + Rust · React + TypeScript
+                    <strong>Ghostnote v1.0</strong> — real-time AI for interviews and meetings.<br />
+                    Live transcription · Instant AI answers · Auto meeting notes
                   </p>
                 </div>
               </div>

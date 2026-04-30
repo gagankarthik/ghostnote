@@ -84,6 +84,12 @@ export default function AuthScreen({ onAuth }: Props) {
             onClick={() => getCurrentWindow().minimize().catch(() => {})}>
             <IconMinus size={11} />
           </button>
+          <button className="titlebar-btn btn-maximize" title="Maximize"
+            onClick={() => getCurrentWindow().toggleMaximize().catch(() => {})}>
+            <svg viewBox="0 0 10 10" width="10" height="10">
+              <rect x="1" y="1" width="8" height="8" stroke="currentColor" fill="none" strokeWidth="1.5" />
+            </svg>
+          </button>
           <button className="titlebar-btn btn-close" title="Close"
             onClick={() => getCurrentWindow().close().catch(() => {})}>
             <IconX size={10} />
