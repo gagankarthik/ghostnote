@@ -86,6 +86,7 @@ pub fn stop_recording(state: State<AppState>) {
 pub async fn ask_ai_stream(
     question: String,
     use_screen: bool,
+    history: Vec<(String, String)>,
     state: State<'_, AppState>,
     app: AppHandle,
 ) -> Result<String, String> {
@@ -96,7 +97,8 @@ pub async fn ask_ai_stream(
 
     let transcript = {
         let buf = state.transcript_buffer.lock().unwrap();
-        let start = buf.len().saturating_sub(20);
+        // Send up to last 60 segments for rich meeting context
+        let start = buf.len().saturating_sub(60);
         buf[start..].join("\n")
     };
 
@@ -125,6 +127,7 @@ pub async fn ask_ai_stream(
         .ask_stream(
             &transcript,
             &question,
+            &history,
             screenshot.as_deref(),
             move |token| {
                 let _ = app_clone.emit("ai-chunk", &token);

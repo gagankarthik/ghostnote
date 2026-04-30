@@ -48,6 +48,15 @@ function SimpleMarkdown({ text, streaming }: { text: string; streaming?: boolean
           {isLast && streaming && <span className="streaming-cursor" />}
         </div>
       );
+    } else if (line.startsWith("- [ ] ") || line.startsWith("- [x] ")) {
+      const done = line.startsWith("- [x] ");
+      elements.push(
+        <div key={i} className="md-task">
+          <span className={`md-task-box${done ? " done" : ""}`}>{done ? "✓" : ""}</span>
+          {renderInline(line.slice(6))}
+          {isLast && streaming && <span className="streaming-cursor" />}
+        </div>
+      );
     } else if (line.startsWith("- ") || line.startsWith("• ")) {
       elements.push(
         <div key={i} className="md-bullet">
@@ -92,12 +101,25 @@ async function copyText(text: string) {
   try { await navigator.clipboard.writeText(text); return true; } catch { return false; }
 }
 
+// Build [user, assistant] history pairs from message list for multi-turn AI context
+function buildHistory(messages: ChatMessage[]): [string, string][] {
+  const completed = messages.filter(m => !m.streaming);
+  const pairs: [string, string][] = [];
+  for (let i = 0; i < completed.length - 1; i++) {
+    if (completed[i].role === "user" && completed[i + 1].role === "assistant") {
+      pairs.push([completed[i].content, completed[i + 1].content]);
+      i++;
+    }
+  }
+  // Keep last 5 turns for context without overloading the prompt
+  return pairs.slice(-5);
+}
+
 interface Props {
   user: AuthUser;
   onBack: (record: MeetingRecord) => void;
 }
 
-// Stable mutable state container — avoids multiple separate ref-sync effects.
 interface StableRefs {
   aiThinking:  boolean;
   autoAsk:     boolean;
@@ -119,7 +141,7 @@ export default function MeetingScreen({ onBack }: Props) {
   const [elapsed,        setElapsed]        = useState(0);
   const [useScreen,      setUseScreen]      = useState(false);
   const [autoAsk,        setAutoAsk]        = useState(false);
-  const [opacity,        setOpacity]        = useState(90);
+  const [opacity,        setOpacity]        = useState(92);
   const [transcriptOpen, setTranscriptOpen] = useState(false);
 
   const meetingStartedAt = useRef(Date.now());
@@ -128,8 +150,6 @@ export default function MeetingScreen({ onBack }: Props) {
   const streamingContent = useRef<string>("");
   const streamingMsgId   = useRef<string | null>(null);
 
-  // Single stable container for all values needed inside async/event callbacks.
-  // Avoids multiple useEffect ref-sync patterns.
   const stable = useRef<StableRefs>({
     aiThinking: false,
     autoAsk:    false,
@@ -137,7 +157,6 @@ export default function MeetingScreen({ onBack }: Props) {
     segments:   [],
     messages:   [],
   });
-  // Keep the container in sync on every render.
   stable.current.aiThinking = aiThinking;
   stable.current.autoAsk    = autoAsk;
   stable.current.useScreen  = useScreen;
@@ -162,10 +181,8 @@ export default function MeetingScreen({ onBack }: Props) {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [isRecording]);
 
-  // ── AI ask (streaming) ────────────────────────────────────────────────────
+  // ── AI ask (streaming with conversation history) ──────────────────────────
 
-  // Stored in a ref so event-listener closures always call the latest version
-  // without needing to re-subscribe listeners on every dependency change.
   const handleAskAI = useCallback(async (q: string) => {
     if (stable.current.aiThinking) return;
     stable.current.aiThinking = true;
@@ -183,8 +200,11 @@ export default function MeetingScreen({ onBack }: Props) {
     setStreamingId(sid);
     setMessages(prev => [...prev, { id: sid, role: "assistant", content: "", streaming: true }]);
 
+    // Build conversation history for multi-turn context
+    const history = buildHistory(stable.current.messages);
+
     try {
-      await api.askAiStream(question, stable.current.useScreen);
+      await api.askAiStream(question, stable.current.useScreen, history);
       setMessages(prev =>
         prev.map(m => m.id === sid ? { ...m, content: streamingContent.current, streaming: false } : m)
       );
@@ -200,9 +220,6 @@ export default function MeetingScreen({ onBack }: Props) {
     }
   }, [addToast]);
 
-  // Keep a ref so event listeners always invoke the latest callback
-  // without re-subscribing. This is the canonical pattern for stable
-  // callbacks in long-lived useEffect subscriptions.
   const handleAskAIRef = useRef(handleAskAI);
   handleAskAIRef.current = handleAskAI;
 
@@ -247,10 +264,6 @@ export default function MeetingScreen({ onBack }: Props) {
       }),
     ];
 
-    // Cleanup: each listen() resolves to an unlisten function.
-    // We call them fire-and-forget (no await) because the component is
-    // already unmounting — there is no meaningful error to handle here,
-    // and React's cleanup pattern does not support async cleanup functions.
     return () => { unsubs.forEach(p => p.then(f => f())); };
   }, [addToast]);
 
@@ -330,6 +343,15 @@ export default function MeetingScreen({ onBack }: Props) {
   const latestText = interimText || (recentSegs.length > 0 ? recentSegs[recentSegs.length - 1].text : "");
   const isEmpty = segments.length === 0 && !interimText && messages.length === 0 && !aiThinking;
 
+  // ── Quick action prompts (Cluely-style: interview + meeting scenarios) ────
+  const quickActions = [
+    { label: "Answer this",    prompt: "Based on what was just asked, give me a complete, impressive answer I can say right now." },
+    { label: "What to say?",   prompt: "What's the smartest thing I can say right now in this conversation?" },
+    { label: "Summarize",      prompt: "Summarize what was discussed so far in 3 concise bullet points." },
+    { label: "Action items",   prompt: "What are the clear action items and next steps from this meeting?" },
+    { label: "Clarify",        prompt: "Explain the last concept or question in simple, clear terms." },
+  ];
+
   return (
     <div className="app" style={{ opacity: opacity / 100 }}>
 
@@ -389,7 +411,6 @@ export default function MeetingScreen({ onBack }: Props) {
         <>
           {/* ── Controls ── */}
           <div className="controls">
-            {/* Primary action: record / stop */}
             <div className="controls-group">
               {!isRecording ? (
                 <button className="btn btn-record" onClick={handleStartRecording}>
@@ -402,7 +423,6 @@ export default function MeetingScreen({ onBack }: Props) {
               )}
             </div>
 
-            {/* Tool buttons: auto, screen, notes */}
             <div className="controls-tools">
               <button
                 className={`btn ${autoAsk ? "btn-auto-on" : "btn-ghost"}`}
@@ -477,8 +497,12 @@ export default function MeetingScreen({ onBack }: Props) {
                   <div className="feed-empty-title">Ready to assist</div>
                   <div className="feed-empty-sub">
                     {isRecording
-                      ? "Listening — ask a question or use Auto mode"
-                      : "Hit Record to start capturing audio, or type a question below"}
+                      ? "Listening — press Ctrl+Enter or use quick actions below"
+                      : "Hit Record to start, or type a question below"}
+                  </div>
+                  <div className="feed-empty-shortcut">
+                    <span className="shortcut-badge">Ctrl+Enter</span>
+                    <span>instant AI answer</span>
                   </div>
                 </div>
               )}
@@ -536,24 +560,15 @@ export default function MeetingScreen({ onBack }: Props) {
             {/* ── Quick actions ── */}
             {!autoAsk && (
               <div className="quick-actions">
-                <button className="quick-btn" onClick={() => handleAskAI("")} disabled={aiThinking}>
-                  Assist
-                </button>
-                <button className="quick-btn"
-                  onClick={() => handleAskAI("What should I say next?")}
-                  disabled={aiThinking}>
-                  What to say?
-                </button>
-                <button className="quick-btn"
-                  onClick={() => handleAskAI("What are smart follow-up questions to ask right now?")}
-                  disabled={aiThinking}>
-                  Follow-ups
-                </button>
-                <button className="quick-btn"
-                  onClick={() => handleAskAI("Summarize what was said so far in 2-3 bullet points")}
-                  disabled={aiThinking}>
-                  Summarize
-                </button>
+                {quickActions.map(({ label, prompt }) => (
+                  <button
+                    key={label}
+                    className="quick-btn"
+                    onClick={() => handleAskAI(prompt)}
+                    disabled={aiThinking}>
+                    {label}
+                  </button>
+                ))}
               </div>
             )}
 
@@ -561,7 +576,7 @@ export default function MeetingScreen({ onBack }: Props) {
             <div className="chat-input-row">
               <input
                 className="chat-input"
-                placeholder={aiThinking ? "Thinking…" : "Ask about the meeting…"}
+                placeholder={aiThinking ? "Thinking…" : "Ask anything about your meeting…"}
                 value={chatInput}
                 onChange={e => setChatInput(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
@@ -583,13 +598,12 @@ export default function MeetingScreen({ onBack }: Props) {
       {showSettings && (
         <div className="settings-view">
 
-          {/* Behavior */}
           <div className="settings-section">
             <div className="settings-title">Behavior</div>
             <label className="toggle-row">
               <input type="checkbox" checked={autoAsk} onChange={e => setAutoAsk(e.target.checked)}
                 style={{ accentColor: "var(--accent)" }} />
-              <span>Auto-ask after each utterance</span>
+              <span>Auto-answer after each utterance</span>
             </label>
             <p className="settings-hint">
               AI responds automatically as each sentence finishes transcribing.
@@ -603,12 +617,11 @@ export default function MeetingScreen({ onBack }: Props) {
 
           <div className="settings-divider" />
 
-          {/* Shortcuts */}
           <div className="settings-section">
             <div className="settings-title">Keyboard Shortcuts</div>
             <div className="shortcuts-list">
               <div className="shortcut-row">
-                <span>Ask AI instantly</span>
+                <span>Instant AI answer</span>
                 <kbd className="kbd">Ctrl+Enter</kbd>
               </div>
               <div className="shortcut-row">
@@ -624,7 +637,6 @@ export default function MeetingScreen({ onBack }: Props) {
 
           <div className="settings-divider" />
 
-          {/* Privacy */}
           <div className="settings-section">
             <div className="settings-title">Privacy</div>
             <p className="settings-hint">

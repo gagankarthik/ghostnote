@@ -6,8 +6,12 @@ export const api = {
   stopRecording:     () => invoke<void>("stop_recording"),
 
   // Streaming AI — emits "ai-chunk" events, resolves with full text
-  askAiStream: (question: string, useScreen: boolean) =>
-    invoke<string>("ask_ai_stream", { question, useScreen }),
+  // history: completed [user, assistant] message pairs for multi-turn context
+  askAiStream: (
+    question: string,
+    useScreen: boolean,
+    history: [string, string][] = [],
+  ) => invoke<string>("ask_ai_stream", { question, useScreen, history }),
 
   generateNotes:     ()                   => invoke<string>("generate_notes"),
   getTranscript:     ()                   => invoke<string[]>("get_transcript"),
