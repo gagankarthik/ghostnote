@@ -417,13 +417,13 @@ export default function MeetingScreen({ onBack }: Props) {
                 onClick={() => setUseScreen(v => !v)}
                 title={useScreen ? "Screen context ON" : "Include screen context"}
                 aria-pressed={useScreen}>
-                <IconMonitor size={11} />
+                <IconMonitor size={11} /> <span>Screen</span>
               </button>
 
               {segments.length > 0 && (
                 <button className="btn btn-ghost" onClick={handleGenerateNotes} disabled={aiThinking}
                   title="Generate meeting notes">
-                  <IconFileText size={11} />
+                  <IconFileText size={11} /> <span>Notes</span>
                 </button>
               )}
             </div>
@@ -431,7 +431,7 @@ export default function MeetingScreen({ onBack }: Props) {
             <div className="controls-spacer" />
 
             <button className="btn btn-ghost" onClick={handleClearSession} title="Clear session">
-              <IconTrash size={11} />
+              <IconTrash size={11} /> <span>Clear</span>
             </button>
           </div>
 
@@ -496,11 +496,13 @@ export default function MeetingScreen({ onBack }: Props) {
                   ) : (
                     <>
                       <div className="ai-avatar"><IconGhost size={10} /></div>
-                      <SimpleMarkdown
-                        text={m.content}
-                        streaming={m.streaming && m.id === streamingId}
-                        key={m.id}
-                      />
+                      <div className="ai-card">
+                        <SimpleMarkdown
+                          text={m.content}
+                          streaming={m.streaming && m.id === streamingId}
+                          key={m.id}
+                        />
+                      </div>
                       {!m.streaming && (
                         <div className="msg-actions">
                           <button className="msg-action-btn"

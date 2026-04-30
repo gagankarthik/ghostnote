@@ -5,6 +5,50 @@ import HistoryScreen from "./HistoryScreen";
 import MeetingScreen from "./MeetingScreen";
 import { api } from "./api";
 import { AppState, AuthUser, MeetingRecord } from "./types";
+import { IconGhost, IconMinus, IconX } from "./icons";
+
+function LoadingScreen() {
+  const win = getCurrentWindow();
+  return (
+    <div className="app">
+      <div className="titlebar auth-titlebar" data-tauri-drag-region>
+        <div className="logo">
+          <IconGhost size={13} />
+          <span>Ghostnote</span>
+        </div>
+        <div className="titlebar-spacer" />
+        <div className="win-controls">
+          <button className="titlebar-btn btn-minimize" title="Minimize"
+            onClick={() => win.minimize().catch(() => {})}>
+            <IconMinus size={11} />
+          </button>
+          <button className="titlebar-btn btn-maximize" title="Maximize"
+            onClick={() => win.toggleMaximize().catch(() => {})}>
+            <svg viewBox="0 0 10 10" width="10" height="10">
+              <rect x="1" y="1" width="8" height="8" stroke="currentColor" fill="none" strokeWidth="1.5" />
+            </svg>
+          </button>
+          <button className="titlebar-btn btn-close" title="Close"
+            onClick={() => win.close().catch(() => {})}>
+            <IconX size={10} />
+          </button>
+        </div>
+      </div>
+      <div className="loading-body">
+        <div className="loading-icon-wrap">
+          <IconGhost size={30} />
+        </div>
+        <div className="loading-name">Ghostnote</div>
+        <div className="loading-tagline">Invisible AI for your meetings</div>
+        <div className="loading-dots">
+          <span className="loading-dot" />
+          <span className="loading-dot" />
+          <span className="loading-dot" />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const LS_EMAIL    = "gn_email";
 const LS_AT       = "gn_at";
@@ -33,9 +77,9 @@ export default function App() {
     document.body.dataset.mode = isMeeting ? "overlay" : "app";
     win.setAlwaysOnTop(isMeeting).catch(() => {});
     if (isMeeting) {
-      win.setSize(new LogicalSize(420, 600)).catch(() => {});
+      win.setSize(new LogicalSize(440, 650)).catch(() => {});
     } else if (appState === "auth" || appState === "history") {
-      win.setSize(new LogicalSize(720, 520)).catch(() => {});
+      win.setSize(new LogicalSize(840, 570)).catch(() => {});
     }
   }, [appState]);
 
@@ -108,7 +152,7 @@ export default function App() {
     }
   };
 
-  if (appState === "loading")  return null;
+  if (appState === "loading")  return <LoadingScreen />;
   if (appState === "auth")     return <AuthScreen onAuth={handleAuth} />;
   if (appState === "history")  return (
     <HistoryScreen

@@ -1,950 +1,1012 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ghostnote — Invisible AI Meeting Assistant for Windows</title>
-  <meta name="description" content="Real-time AI that listens to your meetings, transcribes live audio, and surfaces instant insights — in a floating overlay completely invisible to Zoom, Teams, and Meet." />
-  <meta property="og:title" content="Ghostnote — Invisible AI Meeting Assistant" />
-  <meta property="og:description" content="Real-time AI that listens, thinks, and helps — completely invisible to screen share." />
-  <meta property="og:type" content="website" />
-  <meta name="twitter:card" content="summary_large_image" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800;14..32,900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ghostnote — Invisible AI for Your Meetings</title>
+  <meta name="description" content="Real-time AI assistant that's completely invisible to screen capture. Live transcription, contextual suggestions, and post-meeting summaries — only visible to you.">
+  <meta property="og:title" content="Ghostnote — Invisible AI for Meetings">
+  <meta property="og:description" content="Live AI meeting assistance. Invisible to Zoom, Teams, Meet, and any screen share.">
+  <meta property="og:type" content="website">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..900;1,14..32,300..900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
+    /* ─── Reset ─────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    /* light premium reset + modern design tokens */
-    *,
-    *::before,
-    *::after {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    html {
-      scroll-behavior: smooth;
-    }
-
-    body {
-      background: #FCF9F7;
-      color: #1A1E2B;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      line-height: 1.5;
-      -webkit-font-smoothing: antialiased;
-    }
-
-    /* light, airy gradients & surfaces */
     :root {
-      --primary: #0A6E6B;
-      --primary-light: #1B8C86;
-      --primary-soft: #E2F3F1;
-      --primary-glow: rgba(10, 110, 107, 0.08);
-      --primary-border: rgba(10, 110, 107, 0.18);
-      --secondary: #4F46E5;
-      --secondary-light: #EEF2FF;
-      --glass-white: rgba(255, 255, 255, 0.85);
-      --glass-border: rgba(0, 0, 0, 0.05);
-      --card-bg: rgba(255, 255, 255, 0.96);
-      --surface-1: #FFFFFF;
-      --surface-2: #F9F7F5;
-      --surface-3: #F3F0EE;
-      --text-main: #111827;
-      --text-muted: #4B5563;
-      --text-soft: #6B7280;
-      --text-placeholder: #9CA3AF;
-      --shadow-sm: 0 10px 25px -5px rgba(0, 0, 0, 0.03), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
-      --shadow-md: 0 20px 25px -12px rgba(0, 0, 0, 0.05), 0 8px 12px -6px rgba(0, 0, 0, 0.02);
-      --shadow-lg: 0 30px 40px -20px rgba(0, 0, 0, 0.1);
-      --shadow-xl: 0 35px 50px -25px rgba(0, 0, 0, 0.12);
-      --border-light: rgba(0, 0, 0, 0.05);
-      --border-medium: rgba(0, 0, 0, 0.08);
+      --bg:         #070A14;
+      --bg-2:       #0A0E1C;
+      --surface:    rgba(255, 255, 255, 0.042);
+      --surface-hi: rgba(255, 255, 255, 0.070);
+      --border:     rgba(255, 255, 255, 0.080);
+      --border-hi:  rgba(255, 255, 255, 0.140);
+      --accent:     #00D4B8;
+      --accent-soft:rgba(0, 212, 184, 0.10);
+      --t1: #EDF2FF;
+      --t2: rgba(237,242,255,0.65);
+      --t3: rgba(237,242,255,0.40);
+      --t4: rgba(237,242,255,0.22);
+      --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --mono: 'JetBrains Mono', monospace;
+      --nav-h: 60px;
+      --r: 12px; --r-sm: 8px; --r-lg: 18px; --r-xl: 24px; --r-pill: 999px;
     }
 
-    /* subtle background noise */
+    html { scroll-behavior: smooth; }
     body {
-      background-image: radial-gradient(circle at 10% 20%, rgba(10, 110, 107, 0.02) 1.5px, transparent 1px),
-                        radial-gradient(circle at 90% 70%, rgba(79, 70, 229, 0.012) 1px, transparent 1px);
-      background-size: 48px 48px, 56px 56px;
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--t1);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      font-feature-settings: "cv02","cv03","cv04","cv11";
+      overflow-x: hidden;
     }
+    a { color: inherit; text-decoration: none; }
+    button { font-family: var(--font); cursor: pointer; border: none; outline: none; }
 
-    /* glass navigation */
-    nav {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      z-index: 1000;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 40px;
-      height: 72px;
-      background: rgba(255, 255, 255, 0.82);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border-bottom: 1px solid var(--border-light);
-      box-shadow: 0 1px 0 rgba(0, 0, 0, 0.02);
+    /* ─── Utilities ──────────────────────────────────────────── */
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+    .badge {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 5px 13px; border-radius: var(--r-pill);
+      border: 1px solid var(--border-hi); background: var(--surface);
+      font-size: 12px; font-weight: 500; color: var(--t2); letter-spacing: 0.1px;
     }
-
-    .nav-logo {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      font-size: 18px;
-      font-weight: 700;
-      letter-spacing: -0.3px;
-      color: var(--text-main);
-    }
-
-    .nav-logo-mark {
-      width: 34px;
-      height: 34px;
-      border-radius: 12px;
-      background: linear-gradient(145deg, var(--primary-light), var(--primary));
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      box-shadow: 0 4px 12px rgba(10, 110, 107, 0.2);
-    }
-
-    .nav-links {
-      display: flex;
-      align-items: center;
-      gap: 32px;
-      font-size: 14px;
-      font-weight: 500;
-      color: var(--text-muted);
-    }
-
-    .nav-links a {
-      transition: color 0.2s ease;
-    }
-
-    .nav-links a:hover {
-      color: var(--primary);
-    }
-
-    .nav-actions {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .nav-gh {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 16px;
-      border-radius: 40px;
-      background: var(--surface-2);
-      border: 1px solid var(--border-medium);
-      font-size: 13px;
-      font-weight: 500;
-      color: var(--text-main);
-      transition: all 0.2s;
-    }
-
-    .nav-gh:hover {
-      background: white;
-      border-color: var(--primary-border);
-      color: var(--primary);
-    }
-
-    .nav-cta {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 22px;
-      border-radius: 40px;
-      background: var(--primary);
-      color: white;
-      font-size: 13px;
-      font-weight: 600;
-      letter-spacing: -0.1px;
-      transition: all 0.2s;
-      box-shadow: 0 2px 6px rgba(10, 110, 107, 0.2);
-    }
-
-    .nav-cta:hover {
-      background: var(--primary-light);
-      transform: translateY(-1px);
-      box-shadow: 0 8px 20px rgba(10, 110, 107, 0.25);
-    }
-
-    /* hero section */
-    .hero {
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 140px 24px 96px;
-      text-align: center;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .hero-glow {
-      position: absolute;
-      width: 900px;
-      height: 600px;
-      background: radial-gradient(ellipse at 50% 40%, rgba(10, 110, 107, 0.08), transparent 70%);
-      top: -20%;
-      left: 50%;
-      transform: translateX(-50%);
-      pointer-events: none;
-      z-index: 0;
-    }
-
-    .hero-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: var(--primary-soft);
-      border: 1px solid var(--primary-border);
-      padding: 6px 16px;
-      border-radius: 100px;
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--primary);
-      margin-bottom: 32px;
-      position: relative;
-      z-index: 2;
-    }
-
     .badge-dot {
-      width: 6px;
-      height: 6px;
-      background: var(--primary);
-      border-radius: 50%;
-      animation: pulse 2s infinite;
+      width: 6px; height: 6px; border-radius: 50%; background: var(--accent);
+      box-shadow: 0 0 8px var(--accent);
+      animation: badgePulse 2.5s ease-in-out infinite;
     }
-
-    @keyframes pulse {
-      0% { opacity: 0.6; transform: scale(1);}
-      100% { opacity: 1; transform: scale(1.2);}
+    .gradient-text {
+      background: linear-gradient(130deg, #00D4B8 0%, #34D1F5 55%, #00D4B8 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
     }
-
-    .hero h1 {
-      font-size: clamp(44px, 8vw, 80px);
-      font-weight: 900;
-      letter-spacing: -3px;
-      line-height: 1.05;
-      max-width: 880px;
-      margin-bottom: 28px;
-      background: linear-gradient(135deg, #1A2B36 0%, #0A6E6B 60%, #4F46E5 100%);
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
+    .section-label {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1.5px; color: var(--accent); margin-bottom: 12px;
     }
-
-    .hero-sub {
-      font-size: clamp(17px, 2.2vw, 20px);
-      color: var(--text-muted);
-      max-width: 600px;
-      line-height: 1.6;
-      margin-bottom: 44px;
-    }
-
-    .hero-cta {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      flex-wrap: wrap;
-      justify-content: center;
-    }
-
-    .btn-primary {
-      background: var(--primary);
-      color: white;
-      padding: 14px 32px;
-      border-radius: 44px;
-      font-weight: 600;
-      font-size: 15px;
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      transition: all 0.2s;
-      box-shadow: 0 8px 18px rgba(10, 110, 107, 0.2);
-    }
-
-    .btn-primary:hover {
-      background: var(--primary-light);
-      transform: translateY(-2px);
-      box-shadow: 0 16px 28px -8px rgba(10, 110, 107, 0.3);
-    }
-
-    .btn-outline {
-      background: white;
-      border: 1px solid var(--border-medium);
-      padding: 14px 28px;
-      border-radius: 44px;
-      font-weight: 500;
-      color: var(--text-main);
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      transition: all 0.2s;
-    }
-
-    .btn-outline:hover {
-      border-color: var(--primary);
-      background: var(--primary-soft);
-      color: var(--primary);
-    }
-
-    .hero-note {
-      margin-top: 24px;
-      font-size: 12px;
-      color: var(--text-soft);
-    }
-
-    /* app mockup premium */
-    .mockup-wrap {
-      margin-top: 72px;
-      width: 100%;
-      max-width: 560px;
-      position: relative;
-    }
-
-    .mockup-window {
-      background: white;
-      border-radius: 32px;
-      box-shadow: 0 30px 55px -20px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.02);
-      overflow: hidden;
-      backdrop-filter: blur(2px);
-    }
-
-    .mw-bar {
-      display: flex;
-      align-items: center;
-      padding: 16px 20px;
-      background: #FEFCFA;
-      border-bottom: 1px solid var(--border-light);
-    }
-
-    .mw-dots {
-      display: flex;
-      gap: 8px;
-    }
-
-    .mw-dot {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      background: #E0DEDC;
-    }
-
-    .mw-title {
-      flex: 1;
-      text-align: center;
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--text-soft);
-    }
-
-    .mw-rec {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 11px;
-      background: #FEF3E7;
-      padding: 4px 12px;
-      border-radius: 40px;
-      color: #B45309;
-      font-weight: 600;
-    }
-
-    .mw-rec-dot {
-      width: 8px;
-      height: 8px;
-      background: #EA580C;
-      border-radius: 50%;
-      animation: blink 1.4s infinite;
-    }
-
-    @keyframes blink {
-      0%,100%{opacity:1} 50%{opacity:0.3}
-    }
-
-    .mw-controls {
-      padding: 12px 20px;
-      display: flex;
-      gap: 12px;
-      background: var(--surface-2);
-      border-bottom: 1px solid var(--border-light);
-    }
-
-    .mw-btn-stop {
-      background: #FFF1F0;
-      border: 1px solid #FFDCD9;
-      border-radius: 30px;
-      padding: 5px 12px;
-      font-size: 11px;
-      font-weight: 600;
-      color: #991B1B;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .mw-btn-icon {
-      background: white;
-      border: 1px solid var(--border-medium);
-      border-radius: 30px;
-      padding: 5px 14px;
-      font-size: 11px;
-      font-weight: 500;
-    }
-
-    .mw-btn-active {
-      background: var(--primary-soft);
-      border-color: var(--primary-border);
-      color: var(--primary);
-      font-weight: 600;
-    }
-
-    .mw-body {
-      padding: 20px;
-      background: white;
-    }
-
-    .mw-transcript {
-      background: #F8F9FC;
-      border-radius: 20px;
-      padding: 14px 16px;
-      margin-bottom: 16px;
-      border: 1px solid var(--border-light);
-    }
-
-    .mw-live-badge {
-      font-size: 10px;
-      font-weight: 600;
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      background: #FEF3E7;
-      padding: 2px 8px;
-      border-radius: 30px;
-      margin-bottom: 8px;
-    }
-
-    .mw-tr-text {
-      font-size: 13px;
-      color: var(--text-muted);
-      font-style: normal;
-      line-height: 1.55;
-    }
-
-    .mw-ai-card {
-      background: linear-gradient(145deg, #F9F9FE, #FFFFFF);
-      border-left: 3px solid var(--primary);
-      border-radius: 16px;
-      padding: 16px;
-      margin-bottom: 16px;
-      box-shadow: var(--shadow-sm);
-    }
-
-    .mw-ai-name {
-      font-weight: 800;
-      color: var(--primary);
-      font-size: 12px;
-    }
-
-    .mw-ai-body {
-      font-size: 13px;
-      color: #1E293B;
-      margin-bottom: 8px;
-    }
-
-    .mw-ai-bullet {
-      font-size: 12px;
-      color: var(--text-soft);
-      padding-left: 16px;
-      position: relative;
-      margin-top: 6px;
-    }
-
-    .mw-ai-bullet::before {
-      content: '•';
-      position: absolute;
-      left: 2px;
-      color: var(--primary);
-    }
-
-    .mw-chips {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-bottom: 16px;
-    }
-
-    .mw-chip {
-      background: var(--surface-2);
-      border: 1px solid var(--border-light);
-      border-radius: 30px;
-      padding: 5px 14px;
-      font-size: 11px;
-      font-weight: 500;
-    }
-
-    .mw-input-row {
-      display: flex;
-      gap: 8px;
-      background: var(--surface-2);
-      border-radius: 40px;
-      padding: 4px 4px 4px 16px;
-      border: 1px solid var(--border-light);
-    }
-
-    .mw-input {
-      flex: 1;
-      background: transparent;
-      border: none;
-      font-size: 12px;
-      outline: none;
-    }
-
-    .mw-send {
-      background: var(--primary);
-      width: 32px;
-      height: 32px;
-      border-radius: 40px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-    }
-
-    /* trust bar */
-    .trust-bar {
-      border-top: 1px solid var(--border-light);
-      border-bottom: 1px solid var(--border-light);
-      padding: 20px 32px;
-      background: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-wrap: wrap;
-      gap: 16px 32px;
-    }
-
-    .trust-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 13px;
-      font-weight: 500;
-      color: var(--text-muted);
-    }
-
-    .trust-check {
-      color: var(--primary);
-    }
-
-    /* sections */
-    .section {
-      padding: 96px 24px;
-    }
-
-    .section-inner {
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-
-    .section-alt {
-      background: white;
-      border-top: 1px solid var(--border-light);
-      border-bottom: 1px solid var(--border-light);
-    }
-
-    .eyebrow {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 12px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: var(--primary);
-      background: var(--primary-soft);
-      padding: 4px 14px;
-      border-radius: 30px;
-      margin-bottom: 20px;
-    }
-
-    .section h2 {
-      font-size: clamp(34px, 4vw, 52px);
-      font-weight: 800;
-      letter-spacing: -1.5px;
-      line-height: 1.2;
-      margin-bottom: 20px;
-      color: var(--text-main);
-    }
-
-    .section-desc {
-      font-size: 18px;
-      color: var(--text-muted);
-      max-width: 560px;
-      margin-bottom: 64px;
-    }
-
-    /* features grid */
-    .features-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 24px;
-    }
-
-    @media (max-width: 900px) {
-      .features-grid { grid-template-columns: repeat(2, 1fr); }
-    }
-    @media (max-width: 580px) {
-      .features-grid { grid-template-columns: 1fr; }
-    }
-
-    .feat-card {
-      background: white;
-      border-radius: 28px;
-      padding: 32px 28px;
-      border: 1px solid var(--border-light);
-      transition: transform 0.2s, box-shadow 0.2s;
-      box-shadow: var(--shadow-sm);
-    }
-
-    .feat-card:hover {
-      transform: translateY(-4px);
-      box-shadow: var(--shadow-xl);
-      border-color: rgba(10, 110, 107, 0.15);
-    }
-
-    .feat-icon {
-      width: 56px;
-      height: 56px;
-      background: var(--primary-soft);
-      border-radius: 18px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--primary);
-      margin-bottom: 24px;
-    }
-
-    .feat-title {
-      font-size: 20px;
-      font-weight: 700;
-      letter-spacing: -0.3px;
-      margin-bottom: 12px;
-    }
-
-    .feat-body {
-      color: var(--text-soft);
-      font-size: 15px;
-      line-height: 1.6;
-    }
-    .feat-tag {
-      margin-top: 18px;
-      display: inline-block;
-      font-size: 11px;
-      font-family: monospace;
-      background: var(--surface-2);
-      padding: 4px 12px;
-      border-radius: 30px;
-    }
-
-    /* steps */
-    .steps {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 32px;
-      margin-top: 48px;
-    }
-
-    @media (max-width: 860px) {
-      .steps { grid-template-columns: repeat(2, 1fr); }
-    }
-
-    .step {
-      background: white;
-      border-radius: 28px;
-      padding: 28px;
-      border: 1px solid var(--border-light);
-    }
-
-    .step-num {
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--primary);
-      margin-bottom: 16px;
-    }
-
-    .step h3 {
-      font-size: 18px;
-      font-weight: 700;
-      margin: 12px 0 8px;
-    }
-
-    /* comparison */
-    .compare-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 24px;
-    }
-
-    .compare-card {
-      background: white;
-      border-radius: 28px;
-      border: 1px solid var(--border-light);
-      overflow: hidden;
-    }
-
-    .compare-header {
-      padding: 20px 24px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      border-bottom: 1px solid var(--border-light);
-    }
-
-    .compare-header.bad {
-      background: #FEF9F9;
-    }
-    .compare-header.good {
-      background: var(--primary-soft);
-    }
-    .compare-row {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 14px 24px;
-      border-bottom: 1px solid var(--border-light);
-    }
-
-    .privacy-layout {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 48px;
-      margin-top: 48px;
-    }
-    .privacy-item {
-      display: flex;
-      gap: 16px;
-      background: white;
-      border-radius: 20px;
-      padding: 20px;
-      margin-bottom: 12px;
-      border: 1px solid var(--border-light);
-    }
-
-    .privacy-code-block {
-      background: #1F2937;
-      border-radius: 28px;
-      overflow: hidden;
-      color: #E5E7EB;
-      font-family: monospace;
-      font-size: 12px;
-    }
-
-    .pcb-header {
-      background: #111827;
-      padding: 16px 20px;
-      display: flex;
-      gap: 8px;
-    }
-    .pcb-body {
-      padding: 24px;
-    }
-
-    .tech-grid {
-      display: grid;
-      grid-template-columns: repeat(4,1fr);
-      gap: 20px;
-      margin-top: 48px;
-    }
-    .tech-card {
-      background: white;
-      border-radius: 24px;
-      padding: 24px;
-      border: 1px solid var(--border-light);
-    }
-
-    .download-section {
-      text-align: center;
-      padding: 100px 24px;
-      background: white;
-    }
-    .download-card {
-      max-width: 680px;
-      margin: 0 auto;
-      background: var(--surface-2);
-      border-radius: 48px;
-      padding: 60px 48px;
-      border: 1px solid var(--border-light);
-    }
-
-    footer {
-      border-top: 1px solid var(--border-light);
-      padding: 32px 40px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: white;
-    }
-
     .reveal {
-      opacity: 0;
-      transform: translateY(24px);
-      transition: opacity 0.6s cubic-bezier(0.2, 0.9, 0.4, 1.1), transform 0.6s ease;
+      opacity: 0; transform: translateY(22px);
+      transition: opacity 0.6s cubic-bezier(0.4,0,0.2,1), transform 0.6s cubic-bezier(0.4,0,0.2,1);
     }
-    .reveal.visible {
-      opacity: 1;
-      transform: translateY(0);
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+    .reveal-delay-1 { transition-delay: 0.08s; }
+    .reveal-delay-2 { transition-delay: 0.16s; }
+    .reveal-delay-3 { transition-delay: 0.24s; }
+    .reveal-delay-4 { transition-delay: 0.32s; }
+
+    /* ─── Navbar ─────────────────────────────────────────────── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: var(--nav-h);
+      display: flex; align-items: center;
+      transition: background 0.3s, border-color 0.3s;
+    }
+    nav.scrolled {
+      background: rgba(7,10,20,0.88);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+    }
+    .nav-inner { display: flex; align-items: center; width: 100%; }
+    .nav-logo {
+      display: flex; align-items: center; gap: 9px;
+      font-size: 15px; font-weight: 700; color: var(--t1);
+      letter-spacing: -0.3px; flex-shrink: 0;
+    }
+    .nav-logo-icon {
+      width: 30px; height: 30px; border-radius: 9px;
+      background: var(--accent-soft); border: 1px solid rgba(0,212,184,0.32);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .nav-links {
+      display: flex; align-items: center; gap: 2px; margin-left: 36px; list-style: none;
+    }
+    .nav-links a {
+      display: flex; align-items: center; padding: 7px 14px; border-radius: 8px;
+      font-size: 13.5px; font-weight: 500; color: var(--t3);
+      transition: color 0.15s, background 0.15s;
+    }
+    .nav-links a:hover { color: var(--t1); background: rgba(255,255,255,0.06); }
+    .nav-spacer { flex: 1; }
+    .nav-cta { display: flex; align-items: center; gap: 8px; }
+    .btn-ghost-sm {
+      display: flex; align-items: center; gap: 6px; padding: 8px 16px;
+      border-radius: 8px; border: 1px solid var(--border); background: transparent;
+      color: var(--t2); font-size: 13.5px; font-weight: 500; transition: all 0.15s;
+    }
+    .btn-ghost-sm:hover { border-color: var(--border-hi); color: var(--t1); background: var(--surface); }
+    .btn-primary {
+      display: flex; align-items: center; gap: 7px; padding: 9px 18px;
+      border-radius: 8px; background: var(--accent); color: #012A26;
+      font-size: 13.5px; font-weight: 700; transition: all 0.15s;
+      box-shadow: 0 0 20px rgba(0,212,184,0.26);
+    }
+    .btn-primary:hover { background: #00EFCB; box-shadow: 0 0 36px rgba(0,212,184,0.42); transform: translateY(-1px); }
+
+    /* ─── Hero ───────────────────────────────────────────────── */
+    .hero {
+      position: relative; overflow: hidden;
+      padding-top: calc(var(--nav-h) + 84px);
+      padding-bottom: 88px;
+    }
+    .hero-bg {
+      position: absolute; inset: 0; z-index: 0;
+      background:
+        radial-gradient(ellipse 90% 55% at 50% -5%, rgba(0,212,184,0.14) 0%, transparent 68%),
+        radial-gradient(ellipse 50% 40% at 85% 40%, rgba(52,209,245,0.07) 0%, transparent 62%),
+        radial-gradient(ellipse 40% 35% at 15% 60%, rgba(99,102,241,0.06) 0%, transparent 58%),
+        var(--bg);
+    }
+    .hero-grid {
+      position: absolute; inset: 0; z-index: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.024) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.024) 1px, transparent 1px);
+      background-size: 60px 60px;
+      mask-image: radial-gradient(ellipse 80% 60% at 50% 25%, black 0%, transparent 70%);
+      -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 25%, black 0%, transparent 70%);
+    }
+    .hero-inner {
+      position: relative; z-index: 1;
+      display: flex; flex-direction: column; align-items: center;
+      text-align: center; gap: 28px;
+    }
+    .hero h1 {
+      font-size: clamp(44px, 6.5vw, 80px);
+      font-weight: 800; line-height: 1.06; letter-spacing: -2.8px;
+      color: var(--t1); max-width: 840px;
+    }
+    .hero-sub {
+      font-size: clamp(16px, 2vw, 18.5px); color: var(--t3);
+      line-height: 1.68; max-width: 540px; font-weight: 400;
+    }
+    .hero-cta { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: center; }
+    .btn-hero {
+      display: flex; align-items: center; gap: 8px; padding: 14px 28px;
+      border-radius: 10px; background: var(--accent); color: #012A26;
+      font-size: 15px; font-weight: 700; transition: all 0.15s;
+      box-shadow: 0 0 36px rgba(0,212,184,0.32), 0 4px 14px rgba(0,212,184,0.22);
+    }
+    .btn-hero:hover { background: #00EFCB; box-shadow: 0 0 56px rgba(0,212,184,0.50), 0 8px 22px rgba(0,212,184,0.32); transform: translateY(-2px); }
+    .btn-hero:active { transform: translateY(0); }
+    .btn-hero-ghost {
+      display: flex; align-items: center; gap: 8px; padding: 14px 28px;
+      border-radius: 10px; border: 1px solid var(--border-hi); background: var(--surface);
+      color: var(--t2); font-size: 15px; font-weight: 600; transition: all 0.15s;
+      backdrop-filter: blur(8px);
+    }
+    .btn-hero-ghost:hover { border-color: rgba(255,255,255,0.22); color: var(--t1); background: var(--surface-hi); transform: translateY(-1px); }
+    .hero-meta {
+      font-size: 12.5px; color: var(--t4);
+      display: flex; align-items: center; gap: 16px; flex-wrap: wrap; justify-content: center;
+    }
+    .hero-meta-sep { width: 3px; height: 3px; border-radius: 50%; background: var(--t4); }
+
+    /* App mockup */
+    .hero-mockup {
+      margin-top: 16px; width: 100%; max-width: 480px; position: relative;
+      animation: float 5.5s ease-in-out infinite;
+    }
+    .mockup-glow {
+      position: absolute; inset: -50px; pointer-events: none;
+      background: radial-gradient(ellipse 70% 50% at 50% 50%, rgba(0,212,184,0.12) 0%, transparent 70%);
+    }
+    .mockup-window {
+      position: relative; z-index: 1;
+      background: rgba(9, 12, 22, 0.96);
+      border: 1px solid rgba(255,255,255,0.10); border-radius: 14px; overflow: hidden;
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.62), 0 40px 100px rgba(0,0,0,0.72), 0 0 80px rgba(0,212,184,0.07);
+    }
+    .mockup-titlebar {
+      display: flex; align-items: center; gap: 6px;
+      padding: 9px 13px;
+      background: rgba(9,12,22,0.99); border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+    .mockup-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .mockup-dot-r { background: rgba(239,68,68,0.70); }
+    .mockup-dot-a { background: rgba(245,158,11,0.70); }
+    .mockup-dot-g { background: rgba(16,185,129,0.70); }
+    .mockup-logo-area { display: flex; align-items: center; gap: 6px; margin-left: 8px; }
+    .mockup-logo-name { font-size: 11px; font-weight: 700; color: rgba(237,242,255,0.78); }
+    .mockup-spacer { flex: 1; }
+    .mockup-rec {
+      display: flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 20px;
+      background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.24);
+      font-size: 9px; font-weight: 700; color: #FCD34D;
+      font-family: var(--mono); letter-spacing: 0.5px;
+    }
+    .mockup-rec-dot { width: 4px; height: 4px; border-radius: 50%; background: #F59E0B; animation: badgePulse 1.8s ease-in-out infinite; }
+    .mockup-controls {
+      display: flex; align-items: center; gap: 5px; padding: 6px 10px;
+      background: rgba(12,16,28,0.97); border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .mockup-chip { padding: 3px 10px; border-radius: 20px; font-size: 9.5px; font-weight: 600; }
+    .mockup-chip-stop { background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.26); color: #FCA5A5; }
+    .mockup-chip-tool { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: rgba(237,242,255,0.42); }
+    .mockup-chip-on   { background: rgba(0,212,184,0.10); border: 1px solid rgba(0,212,184,0.28); color: #48DED0; }
+    .mockup-transcript {
+      padding: 6px 10px; background: rgba(12,16,28,0.94);
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .mockup-live { display: flex; align-items: center; gap: 5px; margin-bottom: 4px; }
+    .mockup-live-badge {
+      display: flex; align-items: center; gap: 3px; padding: 1px 6px; border-radius: 12px;
+      background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.22);
+      font-size: 7.5px; font-weight: 700; color: #FCD34D; letter-spacing: 0.7px;
+    }
+    .mockup-live-dot { width: 3.5px; height: 3.5px; border-radius: 50%; background: #F59E0B; animation: badgePulse 1.8s ease-in-out infinite; }
+    .mockup-text { font-size: 9px; color: rgba(237,242,255,0.36); font-style: italic; line-height: 1.55; }
+    .mockup-chat { padding: 9px 10px 6px; display: flex; flex-direction: column; gap: 7px; }
+    .mockup-ai-card {
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+      border-left: 2px solid rgba(0,212,184,0.55); border-radius: 3px 8px 8px 3px; padding: 9px 10px;
+    }
+    .mockup-ai-header { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #48DED0; margin-bottom: 6px; }
+    .mockup-ai-bullet { display: flex; align-items: flex-start; gap: 5px; font-size: 9px; color: rgba(237,242,255,0.74); line-height: 1.6; margin-bottom: 3px; }
+    .mockup-ai-bullet::before { content: "–"; color: var(--accent); font-weight: 700; flex-shrink: 0; }
+    .mockup-input-row { display: flex; gap: 6px; padding: 6px 10px 10px; border-top: 1px solid rgba(255,255,255,0.05); }
+    .mockup-input {
+      flex: 1; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 6px; padding: 5px 9px; font-size: 9px; color: rgba(237,242,255,0.36); font-family: var(--font);
+    }
+    .mockup-send {
+      width: 26px; height: 26px; border-radius: 6px; background: var(--accent-soft);
+      border: 1px solid rgba(0,212,184,0.26); display: flex; align-items: center; justify-content: center;
     }
 
-    @media (max-width: 720px) {
-      nav { padding: 0 24px; }
+    /* ─── Compatibility bar ──────────────────────────────────── */
+    .compat { border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 28px 0; }
+    .compat-inner { display: flex; align-items: center; gap: 40px; flex-wrap: wrap; justify-content: center; }
+    .compat-label { font-size: 11px; font-weight: 600; color: var(--t4); text-transform: uppercase; letter-spacing: 1.1px; white-space: nowrap; }
+    .compat-logos { display: flex; align-items: center; gap: 32px; flex-wrap: wrap; justify-content: center; }
+    .compat-item { display: flex; align-items: center; gap: 7px; font-size: 13.5px; font-weight: 600; color: var(--t3); transition: color 0.15s; letter-spacing: -0.1px; }
+    .compat-item:hover { color: var(--t2); }
+    .compat-icon { width: 20px; height: 20px; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+
+    /* ─── Section scaffold ───────────────────────────────────── */
+    .section { padding: 96px 0; }
+    .section-header { text-align: center; margin-bottom: 56px; }
+    .section-title { font-size: clamp(30px, 4vw, 46px); font-weight: 800; letter-spacing: -1.3px; line-height: 1.12; color: var(--t1); margin-bottom: 14px; }
+    .section-sub { font-size: clamp(15px, 2vw, 17.5px); color: var(--t3); line-height: 1.68; max-width: 520px; margin: 0 auto; }
+
+    /* ─── Features bento ─────────────────────────────────────── */
+    .bento { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .bento-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-xl);
+      padding: 28px; display: flex; flex-direction: column; gap: 14px;
+      transition: border-color 0.2s, background 0.2s, transform 0.2s, box-shadow 0.2s;
+      position: relative; overflow: hidden;
+    }
+    .bento-card::before {
+      content: ""; position: absolute; inset: 0;
+      background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(0,212,184,0.05) 0%, transparent 70%);
+      opacity: 0; transition: opacity 0.3s;
+    }
+    .bento-card:hover { border-color: var(--border-hi); background: var(--surface-hi); transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,0.26); }
+    .bento-card:hover::before { opacity: 1; }
+    .bento-wide  { grid-column: span 2; }
+    .bento-icon {
+      width: 40px; height: 40px; border-radius: 11px;
+      background: var(--accent-soft); border: 1px solid rgba(0,212,184,0.22);
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .bento-label { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--accent); margin-bottom: 4px; }
+    .bento-title { font-size: 18px; font-weight: 700; color: var(--t1); letter-spacing: -0.4px; line-height: 1.2; }
+    .bento-body  { font-size: 13.5px; color: var(--t3); line-height: 1.72; }
+    .bento-stat  { font-size: 52px; font-weight: 800; letter-spacing: -2px; line-height: 1; color: var(--t1); }
+    .bento-stat span { font-size: 22px; letter-spacing: -0.5px; font-weight: 600; color: var(--t3); }
+    .bento-visual { margin-top: auto; padding-top: 8px; }
+
+    .code-block {
+      background: rgba(0,0,0,0.48); border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 8px; padding: 12px 14px; font-family: var(--mono);
+      font-size: 10.5px; line-height: 1.78; color: rgba(237,242,255,0.52); overflow: hidden;
+    }
+    .code-line { display: flex; gap: 12px; }
+    .code-ln    { color: rgba(237,242,255,0.20); user-select: none; min-width: 18px; }
+    .code-kw    { color: #C792EA; }
+    .code-func  { color: #82AAFF; }
+    .code-str   { color: #C3E88D; }
+    .code-cmt   { color: rgba(237,242,255,0.26); }
+    .code-hl    { color: #4DDECE; }
+
+    .waveform { display: flex; align-items: center; gap: 3px; height: 40px; }
+    .wave-bar { width: 3px; border-radius: 2px; background: var(--accent); opacity: 0.7; animation: waveBounce 1.2s ease-in-out infinite; }
+    .wave-bar:nth-child(1)  { animation-delay: 0.00s; }
+    .wave-bar:nth-child(2)  { animation-delay: 0.08s; }
+    .wave-bar:nth-child(3)  { animation-delay: 0.16s; }
+    .wave-bar:nth-child(4)  { animation-delay: 0.24s; }
+    .wave-bar:nth-child(5)  { animation-delay: 0.32s; }
+    .wave-bar:nth-child(6)  { animation-delay: 0.24s; }
+    .wave-bar:nth-child(7)  { animation-delay: 0.16s; }
+    .wave-bar:nth-child(8)  { animation-delay: 0.08s; }
+    .wave-bar:nth-child(9)  { animation-delay: 0.00s; }
+    .wave-bar:nth-child(10) { animation-delay: 0.12s; }
+    .wave-bar:nth-child(11) { animation-delay: 0.24s; }
+    .wave-bar:nth-child(12) { animation-delay: 0.36s; }
+
+    .latency-bars { display: flex; align-items: flex-end; gap: 8px; height: 52px; margin-top: auto; }
+    .lat-col { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .lat-bar { width: 32px; border-radius: 4px 4px 0 0; }
+    .lat-label { font-size: 8px; color: var(--t4); font-weight: 600; text-align: center; }
+
+    .shield-row { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+    .shield-item { display: flex; align-items: center; gap: 9px; font-size: 12.5px; color: var(--t2); }
+    .shield-check {
+      width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0;
+      background: rgba(16,185,129,0.12); border: 1px solid rgba(16,185,129,0.28);
+      display: flex; align-items: center; justify-content: center; color: #6EE7B7; font-size: 10px; font-weight: 800;
+    }
+
+    .suggestion-cards { display: flex; flex-direction: column; gap: 7px; margin-top: 4px; }
+    .suggestion-item {
+      display: flex; align-items: flex-start; gap: 8px;
+      background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+      border-left: 2px solid rgba(0,212,184,0.45); border-radius: 2px 8px 8px 2px;
+      padding: 8px 10px; font-size: 11.5px; color: var(--t2); line-height: 1.58;
+    }
+    .suggestion-num {
+      width: 17px; height: 17px; border-radius: 50%; flex-shrink: 0; margin-top: 1px;
+      background: var(--accent-soft); border: 1px solid rgba(0,212,184,0.24);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 8px; font-weight: 800; color: var(--accent);
+    }
+
+    /* ─── How it works ───────────────────────────────────────── */
+    .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; position: relative; }
+    .steps::before {
+      content: ""; position: absolute; top: 28px; left: calc(12.5% + 14px); right: calc(12.5% + 14px);
+      height: 1px; background: linear-gradient(90deg, transparent, var(--border), var(--accent), var(--border), transparent); z-index: 0;
+    }
+    .step { display: flex; flex-direction: column; gap: 14px; position: relative; z-index: 1; }
+    .step-num {
+      width: 56px; height: 56px; border-radius: 50%;
+      background: var(--bg-2); border: 1px solid var(--border-hi);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; font-weight: 800; color: var(--t1); letter-spacing: -0.5px;
+      box-shadow: 0 0 0 6px var(--bg);
+    }
+    .step-num.accent { background: var(--accent-soft); border-color: rgba(0,212,184,0.38); color: var(--accent); }
+    .step-tag {
+      display: inline-block; font-size: 9.5px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.8px; color: var(--accent); padding: 2px 8px; border-radius: 4px;
+      background: var(--accent-soft); border: 1px solid rgba(0,212,184,0.24); align-self: flex-start;
+    }
+    .step-title { font-size: 15px; font-weight: 700; color: var(--t1); letter-spacing: -0.3px; }
+    .step-body  { font-size: 13px; color: var(--t3); line-height: 1.72; }
+
+    /* ─── Pricing ─────────────────────────────────────────────── */
+    .pricing-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 780px; margin: 0 auto; }
+    .pricing-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-xl);
+      padding: 32px; display: flex; flex-direction: column; gap: 24px;
+      position: relative; overflow: hidden; transition: border-color 0.2s, transform 0.2s;
+    }
+    .pricing-card:hover { transform: translateY(-2px); }
+    .pricing-card.featured { border-color: rgba(0,212,184,0.42); background: rgba(0,212,184,0.04); }
+    .pricing-card.featured::before {
+      content: ""; position: absolute; inset: 0;
+      background: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(0,212,184,0.14) 0%, transparent 60%);
+    }
+    .pricing-badge {
+      position: absolute; top: 22px; right: 22px;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
+      padding: 4px 11px; border-radius: var(--r-pill); background: var(--accent); color: #012A26;
+    }
+    .pricing-tier { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.3px; color: var(--t3); }
+    .pricing-price { display: flex; align-items: baseline; gap: 4px; }
+    .pricing-amount { font-size: 50px; font-weight: 800; letter-spacing: -2px; color: var(--t1); }
+    .pricing-per { font-size: 14px; color: var(--t3); font-weight: 500; }
+    .pricing-desc { font-size: 13.5px; color: var(--t3); line-height: 1.68; border-top: 1px solid var(--border); padding-top: 20px; }
+    .pricing-features { display: flex; flex-direction: column; gap: 11px; flex: 1; }
+    .pricing-feature { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: var(--t2); }
+    .pf-check { width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; }
+    .pf-check.yes { background: rgba(16,185,129,0.12); border: 1px solid rgba(16,185,129,0.28); color: #6EE7B7; }
+    .pf-check.no  { background: rgba(255,255,255,0.04); border: 1px solid var(--border); color: var(--t4); }
+    .pricing-cta { display: flex; align-items: center; justify-content: center; padding: 13px 0; border-radius: 10px; font-size: 14px; font-weight: 700; transition: all 0.15s; }
+    .pricing-cta.solid { background: var(--accent); color: #012A26; box-shadow: 0 0 24px rgba(0,212,184,0.26); }
+    .pricing-cta.solid:hover { background: #00EFCB; box-shadow: 0 0 40px rgba(0,212,184,0.44); }
+    .pricing-cta.outline { background: transparent; border: 1px solid var(--border-hi); color: var(--t2); }
+    .pricing-cta.outline:hover { border-color: rgba(255,255,255,0.24); color: var(--t1); background: var(--surface-hi); }
+
+    /* ─── Privacy ────────────────────────────────────────────── */
+    .privacy-section { padding: 80px 0; background: linear-gradient(180deg, transparent, rgba(0,212,184,0.030) 50%, transparent); }
+    .privacy-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+    .privacy-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 24px; display: flex; flex-direction: column; gap: 12px; transition: border-color 0.2s; }
+    .privacy-card:hover { border-color: var(--border-hi); }
+    .privacy-icon { width: 36px; height: 36px; border-radius: 10px; background: var(--accent-soft); border: 1px solid rgba(0,212,184,0.24); display: flex; align-items: center; justify-content: center; }
+    .privacy-title { font-size: 15px; font-weight: 700; color: var(--t1); letter-spacing: -0.25px; }
+    .privacy-body  { font-size: 13px; color: var(--t3); line-height: 1.72; }
+    .inline-code { font-family: var(--mono); font-size: 12px; background: rgba(0,212,184,0.10); padding: 1px 6px; border-radius: 4px; color: #4DDECE; }
+
+    /* ─── FAQ ────────────────────────────────────────────────── */
+    .faq-list { display: flex; flex-direction: column; max-width: 720px; margin: 0 auto; border: 1px solid var(--border); border-radius: var(--r-xl); overflow: hidden; }
+    .faq-item { border-bottom: 1px solid var(--border); }
+    .faq-item:last-child { border-bottom: none; }
+    .faq-q { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 24px; background: transparent; color: var(--t1); font-size: 15px; font-weight: 600; text-align: left; width: 100%; transition: background 0.15s; letter-spacing: -0.2px; }
+    .faq-q:hover { background: var(--surface); }
+    .faq-q.open  { background: var(--surface); }
+    .faq-arrow { width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--border-hi); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: transform 0.25s, background 0.15s, color 0.15s; color: var(--t3); font-size: 13px; }
+    .faq-q.open .faq-arrow { transform: rotate(45deg); background: var(--accent-soft); color: var(--accent); }
+    .faq-a { max-height: 0; overflow: hidden; transition: max-height 0.3s cubic-bezier(0.4,0,0.2,1); }
+    .faq-a.open { max-height: 320px; }
+    .faq-a-inner { padding: 0 24px 22px; font-size: 14px; color: var(--t3); line-height: 1.78; }
+    .faq-a-inner strong { color: var(--t2); font-weight: 600; }
+
+    /* ─── CTA ────────────────────────────────────────────────── */
+    .cta-section { padding: 100px 0; text-align: center; position: relative; overflow: hidden; }
+    .cta-bg { position: absolute; inset: 0; background: radial-gradient(ellipse 70% 60% at 50% 50%, rgba(0,212,184,0.10) 0%, transparent 68%); }
+    .cta-inner { position: relative; z-index: 1; }
+    .cta-title { font-size: clamp(36px, 5vw, 62px); font-weight: 800; letter-spacing: -2px; line-height: 1.08; margin-bottom: 16px; }
+    .cta-sub { font-size: 17px; color: var(--t3); line-height: 1.68; margin-bottom: 36px; max-width: 480px; margin-left: auto; margin-right: auto; }
+    .cta-btns { display: flex; gap: 12px; justify-content: center; align-items: center; flex-wrap: wrap; }
+    .cta-note { margin-top: 20px; font-size: 12.5px; color: var(--t4); }
+
+    /* ─── Footer ─────────────────────────────────────────────── */
+    footer { border-top: 1px solid var(--border); padding: 44px 0; }
+    .footer-inner { display: flex; align-items: flex-start; justify-content: space-between; gap: 32px; flex-wrap: wrap; }
+    .footer-brand { display: flex; flex-direction: column; gap: 10px; }
+    .footer-logo { display: flex; align-items: center; gap: 9px; font-size: 14px; font-weight: 700; color: var(--t1); letter-spacing: -0.3px; }
+    .footer-logo-icon { width: 28px; height: 28px; border-radius: 8px; background: var(--accent-soft); border: 1px solid rgba(0,212,184,0.30); display: flex; align-items: center; justify-content: center; }
+    .footer-tagline { font-size: 12.5px; color: var(--t4); max-width: 220px; line-height: 1.65; }
+    .footer-col { display: flex; flex-direction: column; gap: 12px; }
+    .footer-col-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.1px; color: var(--t4); }
+    .footer-link { font-size: 13.5px; color: var(--t3); transition: color 0.15s; }
+    .footer-link:hover { color: var(--t1); }
+    .footer-bottom { margin-top: 36px; padding-top: 20px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+    .footer-copy  { font-size: 12px; color: var(--t4); }
+    .footer-built { font-size: 12px; color: var(--t4); }
+    .footer-built span { color: var(--accent); }
+
+    /* ─── Animations ─────────────────────────────────────────── */
+    @keyframes badgePulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.55; }
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50%       { transform: translateY(-9px); }
+    }
+    @keyframes waveBounce {
+      0%, 100% { height: 8px; }
+      50%       { height: 34px; }
+    }
+
+    /* ─── Responsive ─────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .bento { grid-template-columns: repeat(2, 1fr); }
+      .bento-wide { grid-column: span 1; }
+      .steps { grid-template-columns: repeat(2, 1fr); }
+      .steps::before { display: none; }
+      .pricing-grid { grid-template-columns: 1fr; max-width: 440px; }
+      .privacy-grid { grid-template-columns: repeat(2, 1fr); }
       .nav-links { display: none; }
-      .privacy-layout, .tech-grid, .compare-grid { grid-template-columns: 1fr; }
-      .step { padding: 20px; }
+    }
+    @media (max-width: 640px) {
+      .bento { grid-template-columns: 1fr; }
+      .bento-wide { grid-column: span 1; }
+      .steps { grid-template-columns: 1fr; }
+      .privacy-grid { grid-template-columns: 1fr; }
+      .footer-inner { flex-direction: column; }
+      .footer-bottom { flex-direction: column; align-items: flex-start; }
     }
   </style>
 </head>
 <body>
 
-<nav>
-  <div class="nav-logo">
-    <div class="nav-logo-mark">⚡</div>
-    Ghostnote
-  </div>
-  <div class="nav-links">
-    <a href="#features">Features</a>
-    <a href="#how-it-works">How it works</a>
-    <a href="#privacy">Privacy</a>
-    <a href="#download">Download</a>
-  </div>
-  <div class="nav-actions">
-    <a class="nav-gh" href="#" target="_blank">⭧ GitHub</a>
-    <a class="nav-cta" href="#">↓ Download</a>
+<!-- ─── Navbar ──────────────────────────────────────────────── -->
+<nav id="nav">
+  <div class="container">
+    <div class="nav-inner">
+      <a href="/" class="nav-logo">
+        <div class="nav-logo-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <path d="M12 2C7 2 3 7 3 12v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7C21 7 17 2 12 2Z" fill="#00D4B8"/>
+            <circle cx="9" cy="12" r="1.5" fill="#012A26"/>
+            <circle cx="15" cy="12" r="1.5" fill="#012A26"/>
+            <path d="M10 16.5c.6.7 1.4 1 2 1s1.4-.3 2-1" stroke="#012A26" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        Ghostnote
+      </a>
+      <ul class="nav-links">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#how-it-works">How it works</a></li>
+        <li><a href="#pricing">Pricing</a></li>
+        <li><a href="#security">Security</a></li>
+      </ul>
+      <div class="nav-spacer"></div>
+      <div class="nav-cta">
+        <a class="btn-ghost-sm" href="https://github.com/gagankarthik/ghostnote" target="_blank" rel="noopener">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12c0 4.42 2.87 8.17 6.84 9.49.5.09.68-.22.68-.48v-1.69c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.46-1.11-1.46-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.89 1.52 2.34 1.08 2.91.83.09-.65.35-1.08.63-1.33-2.22-.25-4.56-1.11-4.56-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02A9.58 9.58 0 0 1 12 6.8c.85 0 1.71.11 2.51.34 1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10.01 10.01 0 0 0 22 12c0-5.52-4.48-10-10-10Z"/></svg>
+          GitHub
+        </a>
+        <a class="btn-primary" href="https://github.com/gagankarthik/ghostnote/releases/tag/Meeting" target="_blank" rel="noopener">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 15V3M7 10l5 5 5-5M5 19h14"/></svg>
+          Download
+        </a>
+      </div>
+    </div>
   </div>
 </nav>
 
+<!-- ─── Hero ────────────────────────────────────────────────── -->
 <section class="hero">
-  <div class="hero-glow"></div>
-  <div class="hero-badge reveal"><span class="badge-dot"></span> Free & open source · Windows 11/10</div>
-  <h1 class="reveal reveal-delay-1">Your meeting AI,<br><span style="background:linear-gradient(135deg,#0A6E6B,#4F46E5); -webkit-background-clip:text; background-clip:text; color:transparent;">completely invisible</span></h1>
-  <p class="hero-sub reveal reveal-delay-2">Ghostnote listens to your meetings, transcribes in real time, and delivers instant AI insights — inside a floating overlay that nobody else can see.</p>
-  <div class="hero-cta reveal reveal-delay-3">
-    <a class="btn-primary" href="#">↓ Download for Windows</a>
-    <a class="btn-outline" href="#">View source</a>
-  </div>
-  <p class="hero-note reveal reveal-delay-4">No subscription · No meeting bot · No screen-sharing footprint</p>
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+  <div class="container">
+    <div class="hero-inner">
+      <div class="badge reveal">
+        <div class="badge-dot"></div>
+        v1.0 — Now available for Windows
+      </div>
+      <h1 class="reveal reveal-delay-1">
+        The AI co-pilot<br>your meetings<br><span class="gradient-text">can't see</span>
+      </h1>
+      <p class="hero-sub reveal reveal-delay-2">
+        Live transcription, real-time AI suggestions, and post-meeting summaries — rendered in an overlay that's invisible to every screen-capture API.
+      </p>
+      <div class="hero-cta reveal reveal-delay-3">
+        <a class="btn-hero" href="https://github.com/gagankarthik/ghostnote/releases/tag/Meeting" target="_blank" rel="noopener">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 15V3M7 10l5 5 5-5M5 19h14"/></svg>
+          Download for Windows
+        </a>
+        <a class="btn-hero-ghost" href="https://github.com/gagankarthik/ghostnote" target="_blank" rel="noopener">
+          View on GitHub
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 17L17 7M17 7H7M17 7v10"/></svg>
+        </a>
+      </div>
+      <div class="hero-meta reveal reveal-delay-3">
+        <span>Free to download</span>
+        <span class="hero-meta-sep"></span>
+        <span>Windows 10 / 11</span>
+        <span class="hero-meta-sep"></span>
+        <span>No meeting bot required</span>
+      </div>
 
-  <div class="mockup-wrap reveal reveal-delay-4">
-    <div class="mockup-window">
-      <div class="mw-bar"><div class="mw-dots"><span class="mw-dot"></span><span class="mw-dot"></span><span class="mw-dot"></span></div><span class="mw-title">Ghostnote</span><div class="mw-rec"><span class="mw-rec-dot"></span> 03:42</div></div>
-      <div class="mw-controls"><div class="mw-btn-stop">⏹️ Stop</div><div class="mw-btn-icon mw-btn-active">⚡ Auto</div><div class="mw-btn-icon">🖥 Screen</div><div class="mw-btn-icon">📄 Notes</div></div>
-      <div class="mw-body">
-        <div class="mw-transcript"><div class="mw-live-badge"><span class="mw-rec-dot"></span> LIVE</div><div class="mw-tr-text">“we should consider migrating the auth layer before Q4, the current setup won't scale past 50k users…”</div></div>
-        <div class="mw-ai-card"><div class="mw-ai-name">✨ Ghostnote</div><div class="mw-ai-body"><strong>Auth migration is the right call.</strong> Delaying past Q3 means rebuilding under live traffic.</div><div class="mw-ai-bullet">Propose a 2-sprint migration with a feature-flag rollout.</div><div class="mw-ai-bullet">Ask: "What's the estimated downtime window needed?"</div></div>
-        <div class="mw-chips"><span class="mw-chip">💡 Assist</span><span class="mw-chip">⚡ What to say?</span><span class="mw-chip">📝 Summarize</span></div>
-        <div class="mw-input-row"><div class="mw-input">Ask about the meeting…</div><div class="mw-send">➤</div></div>
+      <!-- App mockup -->
+      <div class="hero-mockup reveal reveal-delay-4">
+        <div class="mockup-glow"></div>
+        <div class="mockup-window">
+          <div class="mockup-titlebar">
+            <div class="mockup-dot mockup-dot-r"></div>
+            <div class="mockup-dot mockup-dot-a"></div>
+            <div class="mockup-dot mockup-dot-g"></div>
+            <div class="mockup-logo-area">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="#00D4B8"><path d="M12 2C7 2 3 7 3 12v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7C21 7 17 2 12 2Z"/></svg>
+              <span class="mockup-logo-name">Ghostnote</span>
+            </div>
+            <div class="mockup-spacer"></div>
+            <div class="mockup-rec">
+              <div class="mockup-rec-dot"></div>
+              14:32
+            </div>
+          </div>
+          <div class="mockup-controls">
+            <div class="mockup-chip mockup-chip-stop">■ Stop</div>
+            <div class="mockup-chip mockup-chip-on">⚡ Auto</div>
+            <div class="mockup-chip mockup-chip-tool">⊞ Screen</div>
+            <div style="flex:1"></div>
+            <div class="mockup-chip mockup-chip-tool">✕</div>
+          </div>
+          <div class="mockup-transcript">
+            <div class="mockup-live">
+              <div class="mockup-live-badge">
+                <div class="mockup-live-dot"></div>
+                LIVE
+              </div>
+            </div>
+            <div class="mockup-text">"…and the timeline for the Q4 launch is something we need to align on today before—"</div>
+          </div>
+          <div class="mockup-chat">
+            <div class="mockup-ai-card">
+              <div class="mockup-ai-header">What to say next</div>
+              <div class="mockup-ai-bullet">Ask what the biggest technical blocker is before committing to Q4</div>
+              <div class="mockup-ai-bullet">Confirm who owns the final go/no-go decision</div>
+              <div class="mockup-ai-bullet">Suggest a 48h async doc review before the next sync</div>
+            </div>
+          </div>
+          <div class="mockup-input-row">
+            <div class="mockup-input">Ask about the meeting…</div>
+            <div class="mockup-send">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="#00D4B8"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </section>
 
-<div class="trust-bar"><span class="trust-item"><span class="trust-check">✓</span> Zoom</span><span class="trust-item"><span class="trust-check">✓</span> Teams</span><span class="trust-item"><span class="trust-check">✓</span> Google Meet</span><span class="trust-item"><span class="trust-check">✓</span> Webex</span><span class="trust-item"><span class="trust-check">✓</span> OBS & any recorder</span></div>
+<!-- ─── Compatibility ────────────────────────────────────────── -->
+<div class="compat">
+  <div class="container">
+    <div class="compat-inner">
+      <span class="compat-label">Works with every platform</span>
+      <div class="compat-logos">
+        <div class="compat-item"><div class="compat-icon">🔵</div> Zoom</div>
+        <div class="compat-item"><div class="compat-icon">🟣</div> Teams</div>
+        <div class="compat-item"><div class="compat-icon">🟢</div> Meet</div>
+        <div class="compat-item"><div class="compat-icon">🔷</div> Webex</div>
+        <div class="compat-item"><div class="compat-icon">⚫</div> OBS Studio</div>
+        <div class="compat-item"><div class="compat-icon">🎥</div> Any screen share</div>
+      </div>
+    </div>
+  </div>
+</div>
 
+<!-- ─── Features ─────────────────────────────────────────────── -->
 <section class="section" id="features">
-  <div class="section-inner">
-    <div class="eyebrow reveal">✦ Features</div>
-    <h2 class="reveal reveal-delay-1">Built for the way<br>meetings actually work</h2>
-    <p class="section-desc reveal reveal-delay-2">Every feature designed around one goal: give you an edge in every meeting, without anyone ever knowing it's there.</p>
-    <div class="features-grid">
-      <div class="feat-card reveal"><div class="feat-icon">🛡️</div><div class="feat-title">Screen-capture proof overlay</div><div class="feat-body">Rendered using <code style="background:#F0FDFA;padding:2px 6px;border-radius:12px;">WDA_EXCLUDEFROMCAPTURE</code> — hardware-excluded from screen shares.</div><div class="feat-tag">Win32 API</div></div>
-      <div class="feat-card reveal"><div class="feat-icon">🎙️</div><div class="feat-title">No meeting bot, ever</div><div class="feat-body">WASAPI loopback captures audio — no participant list, no meeting SDK presence.</div><div class="feat-tag">WASAPI Loopback</div></div>
-      <div class="feat-card reveal"><div class="feat-icon">⚡</div><div class="feat-title">Instant AI in &lt;2 seconds</div><div class="feat-body">Press <kbd style="background:#EEF2FF;padding:2px 8px;border-radius:12px;">Ctrl+Enter</kbd> → GPT-4o-mini streams real-time answers.</div><div class="feat-tag">Streaming SSE</div></div>
-      <div class="feat-card reveal"><div class="feat-icon">📝</div><div class="feat-title">Structured meeting notes</div><div class="feat-body">One tap generates summaries, decisions, action items — ready for Notion or Slack.</div></div>
-      <div class="feat-card reveal"><div class="feat-icon">🤖</div><div class="feat-title">Auto-assist mode</div><div class="feat-body">Auto-ask triggers responses after each sentence — proactive intelligence.</div></div>
-      <div class="feat-card reveal"><div class="feat-icon">🖥️</div><div class="feat-title">Visual screen context</div><div class="feat-body">AI reads slides, docs & shared content for answers grounded in reality.</div></div>
+  <div class="container">
+    <div class="section-header">
+      <div class="section-label reveal">Features</div>
+      <h2 class="section-title reveal reveal-delay-1">Built for the meeting you're in right now</h2>
+      <p class="section-sub reveal reveal-delay-2">Every feature designed around one constraint: the other person can never know this exists.</p>
+    </div>
+    <div class="bento">
+
+      <!-- Invisible (wide) -->
+      <div class="bento-card bento-wide reveal">
+        <div class="bento-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00D4B8" stroke-width="2" stroke-linecap="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+        </div>
+        <div>
+          <div class="bento-label">Core differentiator</div>
+          <div class="bento-title">Invisible to every screen-capture API</div>
+        </div>
+        <div class="bento-body">One Windows API call makes the overlay disappear from Zoom, Teams, Meet, OBS, and any application using screen-capture APIs. Visible only on your physical monitor. Undetectable by software.</div>
+        <div class="bento-visual">
+          <div class="code-block">
+            <div class="code-line"><span class="code-ln">1</span><span class="code-cmt">// src-tauri/src/lib.rs — called once on launch</span></div>
+            <div class="code-line"><span class="code-ln">2</span><span class="code-kw">use </span><span style="color:#80CBC4">windows::Win32::UI::WindowsAndMessaging</span>;</div>
+            <div class="code-line"><span class="code-ln">3</span></div>
+            <div class="code-line"><span class="code-ln">4</span><span class="code-func">SetWindowDisplayAffinity</span>(hwnd, <span class="code-hl">WDA_EXCLUDEFROMCAPTURE</span>);</div>
+            <div class="code-line"><span class="code-ln">5</span><span class="code-cmt">// ↑ kernel-level, no app can override this</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Latency stat -->
+      <div class="bento-card reveal reveal-delay-1">
+        <div class="bento-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00D4B8" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>
+        </div>
+        <div class="bento-stat">300<span>ms</span></div>
+        <div>
+          <div class="bento-title">Transcription latency</div>
+          <div class="bento-body" style="margin-top:4px">Deepgram Nova-2 streaming. Words appear as they're spoken — not after the sentence ends.</div>
+        </div>
+        <div class="bento-visual">
+          <div class="latency-bars">
+            <div class="lat-col"><div class="lat-bar" style="height:46px;background:rgba(239,68,68,0.52)"></div><div class="lat-label">Whisper</div></div>
+            <div class="lat-col"><div class="lat-bar" style="height:36px;background:rgba(245,158,11,0.52)"></div><div class="lat-label">Rev AI</div></div>
+            <div class="lat-col"><div class="lat-bar" style="height:13px;background:var(--accent)"></div><div class="lat-label" style="color:var(--accent)">Deepgram</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live transcription -->
+      <div class="bento-card reveal reveal-delay-2">
+        <div class="bento-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00D4B8" stroke-width="2" stroke-linecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/></svg>
+        </div>
+        <div>
+          <div class="bento-title">Live transcription</div>
+          <div class="bento-body" style="margin-top:4px">WASAPI loopback captures system audio — no mic required, no bot in the meeting. Every word in real time.</div>
+        </div>
+        <div class="bento-visual">
+          <div class="waveform">
+            <div class="wave-bar" style="height:12px"></div><div class="wave-bar" style="height:22px"></div>
+            <div class="wave-bar" style="height:34px"></div><div class="wave-bar" style="height:26px"></div>
+            <div class="wave-bar" style="height:38px"></div><div class="wave-bar" style="height:30px"></div>
+            <div class="wave-bar" style="height:42px"></div><div class="wave-bar" style="height:34px"></div>
+            <div class="wave-bar" style="height:26px"></div><div class="wave-bar" style="height:18px"></div>
+            <div class="wave-bar" style="height:30px"></div><div class="wave-bar" style="height:22px"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI suggestions (wide) -->
+      <div class="bento-card bento-wide reveal reveal-delay-1">
+        <div class="bento-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00D4B8" stroke-width="2" stroke-linecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        </div>
+        <div>
+          <div class="bento-label">Every 15 seconds</div>
+          <div class="bento-title">AI suggestions that land in the right moment</div>
+        </div>
+        <div class="bento-body">GPT-4o reads the last 60 seconds of conversation and generates 2–3 precise bullets: what to say next, follow-up questions to ask, or objections to address. Dismissible, never intrusive.</div>
+        <div class="bento-visual">
+          <div class="suggestion-cards">
+            <div class="suggestion-item"><div class="suggestion-num">1</div>Ask what the biggest technical blocker is before committing to the Q4 date</div>
+            <div class="suggestion-item"><div class="suggestion-num">2</div>Clarify whether the budget approval depends on this decision</div>
+            <div class="suggestion-item"><div class="suggestion-num">3</div>Suggest a 48h async doc review before the next sync</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- No bot -->
+      <div class="bento-card reveal reveal-delay-2">
+        <div class="bento-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00D4B8" stroke-width="2" stroke-linecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
+        </div>
+        <div>
+          <div class="bento-title">No bots. No notifications.</div>
+          <div class="bento-body" style="margin-top:4px">Ghostnote never joins your meeting. No participant list entry, no consent popup, no recording indicator visible to others.</div>
+        </div>
+        <div class="bento-visual">
+          <div class="shield-row">
+            <div class="shield-item"><div class="shield-check">✓</div> No join notification</div>
+            <div class="shield-item"><div class="shield-check">✓</div> No recording consent popup</div>
+            <div class="shield-item"><div class="shield-check">✓</div> Invisible to all participants</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Post-meeting -->
+      <div class="bento-card reveal reveal-delay-3">
+        <div class="bento-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00D4B8" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        </div>
+        <div>
+          <div class="bento-title">Structured post-meeting summary</div>
+          <div class="bento-body" style="margin-top:4px">End the meeting → 3-line summary, key decisions, action items with owners, questions asked. One click to clipboard or Notion.</div>
+        </div>
+      </div>
+
     </div>
   </div>
 </section>
 
-<section class="section section-alt" id="how-it-works">
-  <div class="section-inner">
-    <div class="eyebrow">⏵ How it works</div>
-    <h2 class="reveal reveal-delay-1">Up in 60 seconds,<br>invisible forever</h2>
+<!-- ─── How it works ─────────────────────────────────────────── -->
+<section class="section" id="how-it-works" style="background:linear-gradient(180deg,rgba(0,212,184,0.024) 0%,transparent 100%);">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-label reveal">How it works</div>
+      <h2 class="section-title reveal reveal-delay-1">From audio to insight in under a second</h2>
+      <p class="section-sub reveal reveal-delay-2">Four systems working in real time, invisible to everyone in the meeting.</p>
+    </div>
     <div class="steps">
-      <div class="step"><div class="step-num">01</div><div class="step-icon">⬇️</div><h3>Download & sign in</h3><p>Run the .exe, create an account, overlay ready.</p></div>
-      <div class="step"><div class="step-num">02</div><h3>Join your meeting</h3><p>Open Zoom/Teams/Meet, hit record — Ghostnote listens silently.</p></div>
-      <div class="step"><div class="step-num">03</div><h3>Ask anything</h3><p>Ctrl+Enter or tap a chip — instant AI response streamed live.</p></div>
-      <div class="step"><div class="step-num">04</div><h3>Notes ready instantly</h3><p>Generate structured notes after the call; session history saved.</p></div>
+      <div class="step reveal">
+        <div class="step-num accent">1</div>
+        <div class="step-tag">WASAPI · Rust</div>
+        <div class="step-title">Audio captured locally</div>
+        <div class="step-body">Rust captures system audio via WASAPI loopback — the same audio going to your speakers. No microphone access required. Chunked every 250ms.</div>
+      </div>
+      <div class="step reveal reveal-delay-1">
+        <div class="step-num">2</div>
+        <div class="step-tag">Deepgram Nova-2</div>
+        <div class="step-title">Live transcript streams in</div>
+        <div class="step-body">Audio chunks flow to Deepgram's streaming WebSocket. Interim words appear instantly; final segments committed. ~300ms end-to-end latency.</div>
+      </div>
+      <div class="step reveal reveal-delay-2">
+        <div class="step-num">3</div>
+        <div class="step-tag">GPT-4o · Every 15s</div>
+        <div class="step-title">AI reads the last 60 seconds</div>
+        <div class="step-body">The last 60 seconds of transcript is sent to GPT-4o with a focused prompt. 2–3 actionable bullets appear in the overlay within 2 seconds.</div>
+      </div>
+      <div class="step reveal reveal-delay-3">
+        <div class="step-num">4</div>
+        <div class="step-tag">Tauri · Windows API</div>
+        <div class="step-title">Suggestions appear silently</div>
+        <div class="step-body">The overlay renders using <span class="inline-code" style="font-family:var(--mono);font-size:11px;background:rgba(0,212,184,0.10);padding:1px 5px;border-radius:3px;color:#4DDECE">WDA_EXCLUDEFROMCAPTURE</span>. Zoom sees nothing. You see everything.</div>
+      </div>
     </div>
   </div>
 </section>
 
-<section class="section" id="compare">
-  <div class="section-inner">
-    <div class="eyebrow">⚖️ Why Ghostnote</div>
-    <h2>No bots. No notifications.<br>No trace.</h2>
-    <div class="compare-grid reveal">
-      <div class="compare-card"><div class="compare-header bad"><span>❌</span> Traditional Meeting Bots</div><div class="compare-row">❌ Joins call as visible notetaker</div><div class="compare-row">❌ Recording started notification</div><div class="compare-row">❌ Sends audio to third-party cloud</div><div class="compare-row">❌ Notes after meeting ends</div><div class="compare-row">❌ No live AI assistance</div></div>
-      <div class="compare-card"><div class="compare-header good"><span>✨</span> Ghostnote</div><div class="compare-row">✓ Completely invisible — never appears in participants</div><div class="compare-row">✓ No notifications, no consent requests</div><div class="compare-row">✓ Audio stays on your machine (WASAPI loopback)</div><div class="compare-row">✓ Real-time streaming & live AI responses</div><div class="compare-row">✓ Free & open source — bring your own keys</div></div>
+<!-- ─── Pricing ───────────────────────────────────────────────── -->
+<section class="section" id="pricing">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-label reveal">Pricing</div>
+      <h2 class="section-title reveal reveal-delay-1">Simple, transparent pricing</h2>
+      <p class="section-sub reveal reveal-delay-2">Start free. Upgrade when you need unlimited access.</p>
+    </div>
+    <div class="pricing-grid reveal reveal-delay-1">
+      <div class="pricing-card">
+        <div>
+          <div class="pricing-tier">Starter</div>
+          <div class="pricing-price"><div class="pricing-amount">$0</div><div class="pricing-per">/ forever</div></div>
+        </div>
+        <div class="pricing-desc">Everything you need to get started. No credit card required.</div>
+        <div class="pricing-features">
+          <div class="pricing-feature"><div class="pf-check yes">✓</div> 5 meetings per month</div>
+          <div class="pricing-feature"><div class="pf-check yes">✓</div> 30 min max per session</div>
+          <div class="pricing-feature"><div class="pf-check yes">✓</div> Live transcription</div>
+          <div class="pricing-feature"><div class="pf-check yes">✓</div> AI suggestions</div>
+          <div class="pricing-feature"><div class="pf-check yes">✓</div> 7-day session history</div>
+          <div class="pricing-feature"><div class="pf-check no">✕</div> <span style="color:var(--t4)">Post-meeting summary</span></div>
+          <div class="pricing-feature"><div class="pf-check no">✕</div> <span style="color:var(--t4)">Export to Notion / email</span></div>
+        </div>
+        <a class="pricing-cta outline" href="https://github.com/gagankarthik/ghostnote/releases/tag/Meeting" target="_blank" rel="noopener">Download Free</a>
+      </div>
+      <div class="pricing-card featured">
+        <div class="pricing-badge">Most popular</div>
+        <div>
+          <div class="pricing-tier">Pro</div>
+          <div class="pricing-price"><div class="pricing-amount">$19</div><div class="pricing-per">/ month</div></div>
+        </div>
+        <div class="pricing-desc">Unlimited meetings, unlimited length. Full history and one-click export.</div>
+        <div class="pricing-features">
+          <div class="pricing-feature"><div class="pf-check yes">✓</div> Unlimited meetings</div>
+          <div class="pricing-feature"><div class="pf-check yes">✓</div> No session length limit</div>
+          <div class="pricing-feature"><div class="pf-check yes">✓</div> Live transcription</div>
+          <div class="pricing-feature"><div class="pf-check yes">✓</div> Priority AI (GPT-4o)</div>
+          <div class="pricing-feature"><div class="pf-check yes">✓</div> Unlimited session history</div>
+          <div class="pricing-feature"><div class="pf-check yes">✓</div> Post-meeting AI summary</div>
+          <div class="pricing-feature"><div class="pf-check yes">✓</div> Export to Notion / email / clipboard</div>
+        </div>
+        <a class="pricing-cta solid" href="https://github.com/gagankarthik/ghostnote/releases/tag/Meeting" target="_blank" rel="noopener">Get Pro</a>
+      </div>
     </div>
   </div>
 </section>
 
-<section class="section section-alt" id="privacy">
-  <div class="section-inner">
-    <div class="eyebrow">🔒 Privacy</div>
-    <h2>Private by design,<br>auditable by default</h2>
-    <div class="privacy-layout">
-      <div><div class="privacy-item"><span>🛡️</span><div><strong>Hardware-excluded from screen capture</strong><br>OS-level exclusion makes overlay invisible to all recording APIs.</div></div><div class="privacy-item"><span>🎧</span><div><strong>No microphone injection</strong><br>WASAPI loopback only — zero meeting platform SDK presence.</div></div><div class="privacy-item"><span>🔐</span><div><strong>Encrypted transit, no persistent storage</strong><br>Transcription goes over secure WebSocket; notes saved only on demand.</div></div></div>
-      <div class="privacy-code-block"><div class="pcb-header"><span>●</span><span>●</span><span>●</span> <span>lib.rs — screen capture exclusion</span></div><div class="pcb-body"><code>#[cfg(target_os = "windows")] {<br>  SetWindowDisplayAffinity(hwnd, WDA_EXCLUDEFROMCAPTURE);<br>}</code></div></div>
+<!-- ─── Security / Privacy ───────────────────────────────────── -->
+<section class="privacy-section" id="security">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-label reveal">Privacy & Security</div>
+      <h2 class="section-title reveal reveal-delay-1">Built for confidential conversations</h2>
+      <p class="section-sub reveal reveal-delay-2">No audio stored. No recording uploaded. Everything you say stays between you and the AI.</p>
+    </div>
+    <div class="privacy-grid">
+      <div class="privacy-card reveal">
+        <div class="privacy-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00D4B8" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div class="privacy-title">Invisible at the OS level</div>
+        <div class="privacy-body"><span class="inline-code" style="font-family:var(--mono);font-size:11.5px;background:rgba(0,212,184,0.10);padding:1px 5px;border-radius:4px;color:#4DDECE">WDA_EXCLUDEFROMCAPTURE</span> is a Windows kernel-level API. No screen-recording software can override it — not Zoom, not OBS, not any third-party tool.</div>
+      </div>
+      <div class="privacy-card reveal reveal-delay-1">
+        <div class="privacy-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00D4B8" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </div>
+        <div class="privacy-title">Encrypted transit, zero storage</div>
+        <div class="privacy-body">Audio streams to Deepgram over WSS (encrypted WebSocket). Transcripts are processed in memory and never written to disk. Deepgram's data retention: zero.</div>
+      </div>
+      <div class="privacy-card reveal reveal-delay-2">
+        <div class="privacy-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00D4B8" stroke-width="2" stroke-linecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+        </div>
+        <div class="privacy-title">No microphone access</div>
+        <div class="privacy-body">WASAPI loopback captures what's already playing through your speakers — no microphone permission needed. Your physical mic is never touched.</div>
+      </div>
     </div>
   </div>
 </section>
 
-<section class="section">
-  <div class="section-inner">
-    <div class="eyebrow">🛠️ Tech stack</div>
-    <h2>Engineered for speed<br>and reliability</h2>
-    <div class="tech-grid">
-      <div class="tech-card"><div class="tech-logo">Runtime</div><div class="tech-name">Tauri v2 + Rust</div><div>Native Windows app, &lt;10MB binary</div></div>
-      <div class="tech-card"><div class="tech-logo">Transcription</div><div class="tech-name">Deepgram nova-2</div><div>Real-time WebSocket &lt;300ms latency</div></div>
-      <div class="tech-card"><div class="tech-logo">AI model</div><div class="tech-name">GPT-4o-mini</div><div>Streaming SSE for real-time tokens</div></div>
-      <div class="tech-card"><div class="tech-logo">UI</div><div class="tech-name">React + TypeScript</div><div>Modern glass design, Inter fonts</div></div>
+<!-- ─── FAQ ──────────────────────────────────────────────────── -->
+<section class="section" id="faq">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-label reveal">FAQ</div>
+      <h2 class="section-title reveal reveal-delay-1">Common questions</h2>
+    </div>
+    <div class="faq-list reveal">
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)"><span>Can meeting participants see or detect Ghostnote?</span><div class="faq-arrow">+</div></button>
+        <div class="faq-a"><div class="faq-a-inner"><strong>No.</strong> The overlay is hidden at the Windows kernel level using <span style="font-family:var(--mono);font-size:12px;background:rgba(0,212,184,0.10);padding:1px 5px;border-radius:3px;color:#4DDECE">WDA_EXCLUDEFROMCAPTURE</span>. This prevents any process — including Zoom, Teams, OBS — from capturing the window. Ghostnote never joins your meeting, so it doesn't appear in the participant list.</div></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)"><span>Does Ghostnote record my microphone?</span><div class="faq-arrow">+</div></button>
+        <div class="faq-a"><div class="faq-a-inner"><strong>Never.</strong> Ghostnote uses WASAPI loopback to capture system audio — the audio your speakers would play. It requires zero microphone permissions and captures nothing from your physical microphone.</div></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)"><span>What happens to my audio and transcripts?</span><div class="faq-arrow">+</div></button>
+        <div class="faq-a"><div class="faq-a-inner">Audio is streamed over an encrypted WebSocket to Deepgram. <strong>No audio is stored anywhere.</strong> Transcripts are held in memory during the session and saved to DynamoDB (encrypted at rest) only if you choose to keep the session. You can delete any session at any time.</div></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)"><span>Does it work with Zoom's screen-share detection?</span><div class="faq-arrow">+</div></button>
+        <div class="faq-a"><div class="faq-a-inner">Yes. <span style="font-family:var(--mono);font-size:12px;background:rgba(0,212,184,0.10);padding:1px 5px;border-radius:3px;color:#4DDECE">WDA_EXCLUDEFROMCAPTURE</span> operates below the application layer. Zoom captures what the OS exposes — and the OS explicitly excludes this window from all capture outputs.</div></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)"><span>What are the system requirements?</span><div class="faq-arrow">+</div></button>
+        <div class="faq-a"><div class="faq-a-inner"><strong>Windows 10 version 2004 or later (64-bit).</strong> <span style="font-family:var(--mono);font-size:12px;background:rgba(0,212,184,0.10);padding:1px 5px;border-radius:3px;color:#4DDECE">WDA_EXCLUDEFROMCAPTURE</span> requires Windows 10 2004+. WASAPI loopback is available on all modern Windows machines. macOS and Linux are not currently supported.</div></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)"><span>How does the AI know what to suggest?</span><div class="faq-arrow">+</div></button>
+        <div class="faq-a"><div class="faq-a-inner">Every 15 seconds (in Auto mode), the last 60 seconds of transcript is sent to GPT-4o with a focused prompt. You can also ask specific questions at any time. Screen context is optional — if enabled, a screenshot of your active window is included for visual context in technical discussions.</div></div>
+      </div>
     </div>
   </div>
 </section>
 
-<section class="download-section" id="download">
-  <div class="download-card reveal">
-    <div class="dl-icon" style="font-size:44px;">⚡</div>
-    <h2 class="dl-title">Start your next<br><span style="color:var(--primary);">meeting smarter</span></h2>
-    <p class="dl-sub">Free, open source, invisible. No subscription, no meeting bot, no footprint.</p>
-    <a class="btn-primary" href="#" style="display:inline-flex; padding:14px 40px;">⬇ Download for Windows</a>
-    <div style="display:flex; justify-content:center; gap:12px; margin-top:28px;"><span class="trust-item">✔ Windows 10/11</span><span class="trust-item">✔ Open source</span><span class="trust-item">✔ BYOK</span></div>
+<!-- ─── Download CTA ──────────────────────────────────────────── -->
+<section class="cta-section">
+  <div class="cta-bg"></div>
+  <div class="container">
+    <div class="cta-inner">
+      <h2 class="cta-title reveal">Your next meeting,<br><span class="gradient-text">fully prepared</span></h2>
+      <p class="cta-sub reveal reveal-delay-1">Download Ghostnote for Windows and walk into every meeting with an invisible AI in your corner.</p>
+      <div class="cta-btns reveal reveal-delay-2">
+        <a class="btn-hero" href="https://github.com/gagankarthik/ghostnote/releases/tag/Meeting" target="_blank" rel="noopener">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 15V3M7 10l5 5 5-5M5 19h14"/></svg>
+          Download for Windows
+        </a>
+        <a class="btn-hero-ghost" href="https://github.com/gagankarthik/ghostnote" target="_blank" rel="noopener">View source on GitHub</a>
+      </div>
+      <p class="cta-note reveal reveal-delay-3">Free to download · Windows 10 / 11 · No account required to try</p>
+    </div>
   </div>
 </section>
 
+<!-- ─── Footer ───────────────────────────────────────────────── -->
 <footer>
-  <div class="footer-brand">⚡ Ghostnote</div>
-  <div class="footer-links"><a href="#">GitHub</a><a href="#">Releases</a><a href="#">Issues</a></div>
-  <div class="footer-copy">© 2025 Ghostnote — MIT License</div>
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <div class="footer-logo">
+          <div class="footer-logo-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#00D4B8"><path d="M12 2C7 2 3 7 3 12v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7C21 7 17 2 12 2Z"/></svg>
+          </div>
+          Ghostnote
+        </div>
+        <div class="footer-tagline">Invisible AI for meetings. Built with Rust, Tauri, and Deepgram.</div>
+      </div>
+      <div class="footer-col">
+        <div class="footer-col-title">Product</div>
+        <a class="footer-link" href="#features">Features</a>
+        <a class="footer-link" href="#how-it-works">How it works</a>
+        <a class="footer-link" href="#pricing">Pricing</a>
+        <a class="footer-link" href="https://github.com/gagankarthik/ghostnote/releases/tag/Meeting" target="_blank">Download</a>
+      </div>
+      <div class="footer-col">
+        <div class="footer-col-title">Security</div>
+        <a class="footer-link" href="#security">Privacy overview</a>
+        <a class="footer-link" href="#faq">FAQ</a>
+      </div>
+      <div class="footer-col">
+        <div class="footer-col-title">Open source</div>
+        <a class="footer-link" href="https://github.com/gagankarthik/ghostnote" target="_blank">GitHub</a>
+        <a class="footer-link" href="https://github.com/gagankarthik/ghostnote/releases" target="_blank">Releases</a>
+        <a class="footer-link" href="https://github.com/gagankarthik/ghostnote/issues" target="_blank">Report a bug</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div class="footer-copy">© 2025 Ghostnote. All rights reserved.</div>
+      <div class="footer-built">Built with <span>Tauri + Rust</span> · <span>Deepgram Nova-2</span> · <span>GPT-4o</span></div>
+    </div>
+  </div>
 </footer>
 
 <script>
+  // Nav scroll
+  const nav = document.getElementById('nav');
+  window.addEventListener('scroll', () => {
+    nav.classList.toggle('scrolled', window.scrollY > 20);
+  }, { passive: true });
+
+  // FAQ accordion
+  function toggleFaq(btn) {
+    const answer = btn.nextElementSibling;
+    const isOpen = btn.classList.contains('open');
+    document.querySelectorAll('.faq-q.open').forEach(q => {
+      q.classList.remove('open');
+      q.nextElementSibling.classList.remove('open');
+    });
+    if (!isOpen) {
+      btn.classList.add('open');
+      answer.classList.add('open');
+    }
+  }
+
+  // Scroll reveal
   const observer = new IntersectionObserver((entries) => {
-    entries.forEach(e => { if(e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); } });
-  }, { threshold: 0.1, rootMargin: "0px 0px -20px 0px" });
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.10, rootMargin: '0px 0px -36px 0px' });
+
   document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
-  const nav = document.querySelector('nav');
-  window.addEventListener('scroll', () => { nav.style.borderBottomColor = window.scrollY > 10 ? 'rgba(0,0,0,0.05)' : 'transparent'; });
 </script>
 </body>
 </html>

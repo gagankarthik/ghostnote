@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { AuthUser, MeetingRecord } from "./types";
 import { IconGhost, IconSettings, IconMinus, IconX, IconTrash, IconMic } from "./icons";
@@ -10,11 +10,10 @@ function fmtDate(ts: number) {
   const yesterday = new Date(now);
   yesterday.setDate(yesterday.getDate() - 1);
   const isYesterday = d.toDateString() === yesterday.toDateString();
-
   const time = d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
-  if (isToday)     return `Today · ${time}`;
-  if (isYesterday) return `Yesterday · ${time}`;
-  return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }) + ` · ${time}`;
+  if (isToday)     return `Today, ${time}`;
+  if (isYesterday) return `Yesterday, ${time}`;
+  return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }) + `, ${time}`;
 }
 
 function fmtDuration(startedAt: number, endedAt: number) {
@@ -25,6 +24,14 @@ function fmtDuration(startedAt: number, endedAt: number) {
   if (h > 0) return `${h}h ${m}m`;
   if (m > 0) return `${m}m ${sec}s`;
   return `${sec}s`;
+}
+
+function fmtTotalHours(meetings: MeetingRecord[]) {
+  const totalSec = meetings.reduce((sum, m) => sum + Math.round((m.endedAt - m.startedAt) / 1000), 0);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
 }
 
 function initials(email: string) {
@@ -45,15 +52,26 @@ interface Props {
 
 export default function HistoryScreen({ user, meetings, onStartMeeting, onSignOut, onDeleteMeeting }: Props) {
   const [activeTab, setActiveTab] = useState<NavTab>("meetings");
+  const [search, setSearch] = useState("");
 
   const handleDragStart = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0) return;
-    if ((e.target as HTMLElement).closest("button, a")) return;
+    if ((e.target as HTMLElement).closest("button, a, input")) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     getCurrentWindow().startDragging().catch(() => {});
   };
 
   const totalWords = meetings.reduce((sum, m) => sum + m.wordCount, 0);
+  const totalQuestions = meetings.reduce((sum, m) => sum + m.questionCount, 0);
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return meetings;
+    const q = search.toLowerCase();
+    return meetings.filter(m =>
+      (m.preview && m.preview.toLowerCase().includes(q)) ||
+      fmtDate(m.startedAt).toLowerCase().includes(q)
+    );
+  }, [meetings, search]);
 
   return (
     <div className="app">
@@ -81,6 +99,13 @@ export default function HistoryScreen({ user, meetings, onStartMeeting, onSignOu
 
         {/* ── Sidebar ── */}
         <aside className="sidebar">
+          <div className="sidebar-brand">
+            <div className="sidebar-brand-icon">
+              <IconGhost size={15} />
+            </div>
+            <span className="sidebar-brand-name">Ghostnote</span>
+          </div>
+
           <nav className="sidebar-nav">
             <button
               className={`sidebar-nav-item${activeTab === "meetings" ? " active" : ""}`}
@@ -96,7 +121,7 @@ export default function HistoryScreen({ user, meetings, onStartMeeting, onSignOu
             </button>
           </nav>
 
-          {/* User info at sidebar bottom */}
+          {/* User info */}
           <div className="sidebar-footer">
             <div className="sidebar-user">
               <div className="sidebar-avatar">{initials(user.email)}</div>
@@ -104,7 +129,6 @@ export default function HistoryScreen({ user, meetings, onStartMeeting, onSignOu
                 <div className="sidebar-email">{user.email}</div>
                 <div className="sidebar-stats">
                   {meetings.length} session{meetings.length !== 1 ? "s" : ""}
-                  {totalWords > 0 && ` · ${totalWords.toLocaleString()}w`}
                 </div>
               </div>
             </div>
@@ -120,9 +144,29 @@ export default function HistoryScreen({ user, meetings, onStartMeeting, onSignOu
               <div className="meetings-panel-header">
                 <h1 className="panel-title">Your Meetings</h1>
                 <p className="panel-sub">
-                  Real-time AI assistance — invisible to screen capture
+                  AI assistance captured live — completely invisible to screen share
                 </p>
               </div>
+
+              {/* Metrics row */}
+              {meetings.length > 0 && (
+                <div className="metrics-row">
+                  <div className="metric-card">
+                    <div className="metric-value metric-accent">{meetings.length}</div>
+                    <div className="metric-label">Sessions</div>
+                  </div>
+                  <div className="metric-card">
+                    <div className="metric-value">{fmtTotalHours(meetings)}</div>
+                    <div className="metric-label">Recorded</div>
+                  </div>
+                  <div className="metric-card">
+                    <div className="metric-value">
+                      {totalWords >= 1000 ? `${(totalWords / 1000).toFixed(1)}k` : totalWords}
+                    </div>
+                    <div className="metric-label">Words</div>
+                  </div>
+                </div>
+              )}
 
               <button className="btn-start-meeting-desktop" onClick={onStartMeeting}>
                 <IconMic size={15} />
@@ -131,9 +175,21 @@ export default function HistoryScreen({ user, meetings, onStartMeeting, onSignOu
 
               {meetings.length > 0 ? (
                 <>
-                  <div className="panel-section-label">Recent Sessions</div>
+                  <div className="search-row">
+                    <input
+                      className="search-input"
+                      placeholder="Search sessions…"
+                      value={search}
+                      onChange={e => setSearch(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="panel-section-label">
+                    {search ? `${filtered.length} of ${meetings.length} sessions` : "Recent Sessions"}
+                  </div>
+
                   <div className="history-list desktop">
-                    {meetings.map(m => (
+                    {filtered.length > 0 ? filtered.map(m => (
                       <div key={m.id} className="history-item">
                         <div className="history-item-top">
                           <span className="history-date">{fmtDate(m.startedAt)}</span>
@@ -150,10 +206,15 @@ export default function HistoryScreen({ user, meetings, onStartMeeting, onSignOu
                         )}
                         <div className="history-stats">
                           {m.wordCount.toLocaleString()}w
-                          {m.questionCount > 0 && ` · ${m.questionCount} Q${m.questionCount !== 1 ? "s" : ""}`}
+                          {m.questionCount > 0 && ` · ${m.questionCount} question${m.questionCount !== 1 ? "s" : ""}`}
                         </div>
                       </div>
-                    ))}
+                    )) : (
+                      <div className="history-empty desktop">
+                        <div className="history-empty-title">No results for "{search}"</div>
+                        <div className="history-empty-sub">Try a different search term.</div>
+                      </div>
+                    )}
                   </div>
                 </>
               ) : (
@@ -174,24 +235,26 @@ export default function HistoryScreen({ user, meetings, onStartMeeting, onSignOu
             <div className="settings-panel">
               <div className="settings-panel-header">
                 <h1 className="panel-title">Settings</h1>
+                <p className="panel-sub">Manage your account and preferences</p>
               </div>
 
               {/* Account */}
-              <div className="settings-section">
-                <div className="settings-title">Account</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <div className="settings-section-title">Account</div>
                 <div className="account-row">
                   <div className="account-avatar">{initials(user.email)}</div>
                   <div className="account-info">
                     <div className="account-email">{user.email}</div>
                     <div className="account-stats">
                       {meetings.length} session{meetings.length !== 1 ? "s" : ""}
-                      {totalWords > 0 && ` · ${totalWords.toLocaleString()} words captured`}
+                      {totalWords > 0 && ` · ${totalWords.toLocaleString()} words`}
+                      {totalQuestions > 0 && ` · ${totalQuestions} AI queries`}
                     </div>
                   </div>
                 </div>
                 <button
                   className="btn btn-stop"
-                  style={{ alignSelf: "flex-start" }}
+                  style={{ alignSelf: "flex-start", borderRadius: 6 }}
                   onClick={onSignOut}>
                   Sign Out
                 </button>
@@ -200,27 +263,31 @@ export default function HistoryScreen({ user, meetings, onStartMeeting, onSignOu
               <div className="settings-divider" />
 
               {/* Privacy */}
-              <div className="settings-section">
-                <div className="settings-title">Privacy</div>
-                <p className="settings-hint">
-                  The overlay is hidden from screen capture using Windows{" "}
-                  <code>WDA_EXCLUDEFROMCAPTURE</code> — invisible to Zoom, Teams, Meet,
-                  OBS, and any screen-recording API. Audio is captured via WASAPI loopback
-                  (system audio only) and streamed to Deepgram over an encrypted WebSocket.
-                  Nothing is stored locally beyond the session.
-                </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <div className="settings-section-title">Privacy & Security</div>
+                <div className="settings-section-card">
+                  <p className="settings-hint">
+                    The overlay is hidden from all screen capture using Windows{" "}
+                    <code>WDA_EXCLUDEFROMCAPTURE</code> — invisible to Zoom, Teams,
+                    Meet, OBS, and every screen-recording API. Audio is captured via
+                    WASAPI loopback (system audio only) and streamed to Deepgram
+                    over an encrypted WebSocket. No audio is stored.
+                  </p>
+                </div>
               </div>
 
               <div className="settings-divider" />
 
               {/* About */}
-              <div className="settings-section">
-                <div className="settings-title">About</div>
-                <p className="settings-hint">
-                  Ghostnote v0.1.0 — real-time AI assistant for meetings.
-                  Powered by Deepgram nova-2 for transcription and GPT-4o-mini for
-                  instant, accurate assistance.
-                </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <div className="settings-section-title">About</div>
+                <div className="settings-section-card">
+                  <p className="settings-hint">
+                    <strong>Ghostnote v1.0</strong> — real-time invisible AI for meetings.<br />
+                    Deepgram nova-2 for live transcription · GPT-4o for suggestions<br />
+                    Built with Tauri + Rust · React + TypeScript
+                  </p>
+                </div>
               </div>
             </div>
           )}
